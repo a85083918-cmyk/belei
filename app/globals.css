@@ -1,0 +1,97 @@
+@import "tailwindcss";
+
+:root {
+  --background: #fff8e8;
+  --foreground: #171717;
+  --font-hand: "Iansui", "Noto Sans TC", sans-serif;
+  --font-number: "Nunito", sans-serif;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+}
+
+html,
+body {
+  background-color: #fff8e8;
+  background-image:
+    radial-gradient(#e8d6aa 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.45) 50%, transparent 50%);
+  background-size: 18px 18px, 36px 36px;
+}
+
+body {
+  background-image: radial-gradient(#f2e6c9 0.8px, transparent 0.8px);
+  background-size: 22px 22px;
+}
+
+* {
+  font-family: var(--font-hand);
+}
+
+.text-7xl,
+.text-6xl,
+.text-5xl,
+.text-4xl,
+.text-3xl {
+  font-family: var(--font-number), var(--font-hand);
+  font-weight: 800;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-hand);
+  letter-spacing: 0.04em;
+}
+
+.handwriting,
+.handwriting * {
+  font-family: var(--font-hand) !important;
+}
+
+.number-font {
+  font-family: var(--font-number), var(--font-hand) !important;
+}
+.paper-card {
+  overflow: hidden;
+}
+
+.paper-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(#eadfca 0.9px, transparent 0.9px);
+  background-size: 18px 18px;
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.paper-card > * {
+  position: relative;
+  z-index: 2;
+}
+
+.sticker-tape {
+  position: absolute;
+  top: -12px;
+  width: 82px;
+  height: 26px;
+  border-radius: 3px;
+  opacity: 0.9;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12);
+  z-index: 5;
+}
+
+.tape-left {
+  left: 28px;
+  transform: rotate(-10deg);
+  background: #ffd84f;
+}
+
+.tape-right {
+  right: 28px;
+  transform: rotate(10deg);
+  background: #ffcfa3;
+}
