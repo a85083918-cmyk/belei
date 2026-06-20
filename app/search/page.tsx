@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { headers } from "next/headers";
 
 type SearchPageProps = {
@@ -55,9 +56,9 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   return (
     <main className="min-h-screen bg-[#fff8e8] px-4 py-8 text-stone-900">
       <div className="mx-auto max-w-5xl">
-        <a href="/" className="text-sm underline">
+        <Link href="/" className="text-sm underline">
           ← 回首頁
-        </a>
+        </Link>
 
         <h1 className="mt-6 text-3xl font-bold">搜尋結果</h1>
 
@@ -81,48 +82,42 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
               const img = photoUrl(place.photoName);
 
               return (
-                <article
+                <Link
                   key={place.id}
-                  className="overflow-hidden rounded-3xl border border-stone-300 bg-white/80 shadow-sm"
+                  href={`/restaurant/${encodeURIComponent(place.id)}`}
+                  className="block transition hover:-translate-y-1 hover:opacity-95"
                 >
-                  <div className="h-52 bg-stone-200">
-                    {img ? (
-                      <img
-                        src={img}
-                        alt={place.name}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-full items-center justify-center text-stone-500">
-                        暫無店家圖片
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="p-5">
-                    <h2 className="text-xl font-bold">{place.name}</h2>
-                    <p className="mt-2 text-sm text-stone-600">
-                      {place.address}
-                    </p>
-
-                    <div className="mt-4 flex gap-3 text-sm">
-                      <span>⭐ {place.rating ?? "無評分"}</span>
-                      <span>評論 {place.userRatingCount ?? 0}</span>
+                  <article className="overflow-hidden rounded-3xl border border-stone-300 bg-white/80 shadow-sm">
+                    <div className="h-52 bg-stone-200">
+                      {img ? (
+                        <img
+                          src={img}
+                          alt={place.name}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center text-stone-500">
+                          暫無店家圖片
+                        </div>
+                      )}
                     </div>
-                  </div>
-                </article>
+
+                    <div className="p-5">
+                      <h2 className="text-xl font-bold">{place.name}</h2>
+                      <p className="mt-2 text-sm text-stone-600">
+                        {place.address}
+                      </p>
+
+                      <div className="mt-4 flex gap-3 text-sm">
+                        <span>⭐ {place.rating ?? "無評分"}</span>
+                        <span>評論 {place.userRatingCount ?? 0}</span>
+                      </div>
+                    </div>
+                  </article>
+                </Link>
               );
             })}
           </div>
-        )}
-
-        {data.debug && (
-          <details className="mt-10 rounded-2xl bg-stone-900 p-4 text-xs text-white">
-            <summary className="cursor-pointer">Debug</summary>
-            <pre className="mt-4 whitespace-pre-wrap">
-              {JSON.stringify(data.debug, null, 2)}
-            </pre>
-          </details>
         )}
       </div>
     </main>
