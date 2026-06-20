@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 
 const cities = [
@@ -12,6 +13,24 @@ const cities = [
 ];
 
 export default function SelectCityPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen bg-[#FAFAFA] px-5 py-10 text-black">
+          <div className="mx-auto max-w-4xl">
+            <div className="rounded-3xl border border-gray-200 bg-white p-8 shadow-sm">
+              載入中...
+            </div>
+          </div>
+        </main>
+      }
+    >
+      <SelectCityContent />
+    </Suspense>
+  );
+}
+
+function SelectCityContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -33,9 +52,7 @@ export default function SelectCityPage() {
             BeLei 分店精準判定
           </p>
 
-          <h1 className="mt-2 text-4xl font-black">
-            你想查哪個地區？
-          </h1>
+          <h1 className="mt-2 text-4xl font-black">你想查哪個地區？</h1>
 
           <p className="mt-3 leading-8 text-gray-600">
             你搜尋的是：
@@ -54,9 +71,7 @@ export default function SelectCityPage() {
             >
               <div className="text-4xl">📍</div>
 
-              <h2 className="mt-4 text-2xl font-black">
-                {city}
-              </h2>
+              <h2 className="mt-4 text-2xl font-black">{city}</h2>
 
               <p className="mt-2 text-gray-500">
                 搜尋 {keyword} {city}
