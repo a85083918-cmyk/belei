@@ -95,7 +95,6 @@ export default function Home() {
     }
 
     document.addEventListener("mousedown", handleClickOutside);
-
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
@@ -184,126 +183,120 @@ export default function Home() {
     setShowRecent(false);
   }
 
-  const topGap = gapStores[0];
-  const topStable = stableStoreList[0];
-
   return (
-    <main className="min-h-screen bg-[#fff8e8] px-4 py-6 text-stone-950">
-      <section className="mx-auto flex max-w-5xl flex-col items-center text-center">
-        <div className="relative w-full max-w-3xl">
-          <div className="absolute right-2 top-2 hidden text-3xl md:block">🔔</div>
-
-          <div className="mx-auto w-fit rounded-full bg-orange-100 px-5 py-2 text-sm font-black text-orange-600">
-            吃之前，先查查
+    <main className="min-h-screen bg-[#fff8e8] px-4 py-5 text-stone-950">
+      <section className="mx-auto flex max-w-5xl flex-col items-center">
+        <div className="w-full max-w-3xl">
+          <div className="flex items-center justify-between">
+            <h1 className="text-3xl font-black tracking-tight md:text-6xl">
+              Be<span className="text-orange-500">Lei</span>
+            </h1>
+            <div className="text-2xl">🔔</div>
           </div>
 
-          <h1 className="mt-5 text-6xl font-black tracking-tight md:text-7xl">
-            Be<span className="text-orange-500">Lei</span>
-          </h1>
+          <div className="mt-5">
+            <h2 className="text-4xl font-black leading-tight md:text-6xl">
+              吃之前，
+              <br />
+              先<span className="text-orange-500">查查</span>
+            </h2>
 
-          <p className="mt-5 text-xl font-bold leading-9 text-stone-700 md:text-2xl">
-            Google 告訴你有多紅
-            <br />
-            我們告訴你會不會後悔
-          </p>
-        </div>
-
-        <div
-          ref={recentRef}
-          className="relative mt-8 w-full max-w-3xl rounded-[30px] border border-stone-100 bg-white p-3 shadow-[6px_6px_0_#ead8b5]"
-        >
-          <div className="flex gap-3">
-            <input
-              type="text"
-              value={keyword}
-              onFocus={() => setShowRecent(true)}
-              onChange={(e) => setKeyword(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleSearch();
-                if (e.key === "Escape") setShowRecent(false);
-              }}
-              placeholder="輸入餐廳名稱，例如：老新台菜"
-              className="min-w-0 flex-1 rounded-2xl bg-stone-50 px-5 py-4 text-base font-bold outline-none focus:bg-orange-50 md:text-lg"
-            />
-
-            <button
-              onClick={() => handleSearch()}
-              className="shrink-0 rounded-2xl bg-orange-500 px-5 py-4 text-lg font-black text-white hover:bg-orange-600 md:px-8"
-            >
-              搜尋
-            </button>
+            <p className="mt-3 text-base font-bold leading-7 text-stone-700 md:text-xl">
+              Google 告訴你有多紅
+              <br />
+              我們告訴你會不會後悔
+            </p>
           </div>
 
-          {showRecent && recentSearches.length > 0 && (
-            <div className="absolute left-0 right-0 top-full z-30 mt-3 overflow-hidden rounded-[24px] border border-stone-100 bg-white text-left shadow-[6px_6px_0_#ead8b5]">
-              <div className="flex items-center justify-between px-5 py-4">
-                <div className="text-sm font-black text-stone-500">🕒 最近搜尋</div>
+          <div
+            ref={recentRef}
+            className="relative mt-6 w-full rounded-[24px] border border-stone-100 bg-white p-2 shadow-[5px_5px_0_#ead8b5]"
+          >
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={keyword}
+                onFocus={() => setShowRecent(true)}
+                onChange={(e) => setKeyword(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSearch();
+                  if (e.key === "Escape") setShowRecent(false);
+                }}
+                placeholder="輸入餐廳名稱，例如：老新台菜"
+                className="min-w-0 flex-1 rounded-2xl bg-stone-50 px-4 py-4 text-sm font-bold outline-none focus:bg-orange-50 md:text-lg"
+              />
 
-                <button
-                  type="button"
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    clearRecentSearches();
-                  }}
-                  className="text-xs font-black text-orange-500 hover:text-orange-600"
-                >
-                  清除
-                </button>
-              </div>
+              <button
+                onClick={() => handleSearch()}
+                className="shrink-0 rounded-2xl bg-orange-500 px-5 py-4 text-lg font-black text-white hover:bg-orange-600"
+              >
+                🔍
+              </button>
+            </div>
 
-              <div className="pb-2">
-                {recentSearches.map((item) => (
+            {showRecent && recentSearches.length > 0 && (
+              <div className="absolute left-0 right-0 top-full z-30 mt-3 overflow-hidden rounded-[24px] border border-stone-100 bg-white text-left shadow-[6px_6px_0_#ead8b5]">
+                <div className="flex items-center justify-between px-5 py-4">
+                  <div className="text-sm font-black text-stone-500">
+                    🕒 最近搜尋
+                  </div>
+
                   <button
-                    key={item}
                     type="button"
                     onMouseDown={(e) => {
                       e.preventDefault();
-                      handleSearch(item);
+                      clearRecentSearches();
                     }}
-                    className="flex w-full items-center px-5 py-3 font-bold text-stone-700 transition hover:bg-orange-50"
+                    className="text-xs font-black text-orange-500 hover:text-orange-600"
                   >
-                    {item}
+                    清除
                   </button>
-                ))}
+                </div>
+
+                <div className="pb-2">
+                  {recentSearches.map((item) => (
+                    <button
+                      key={item}
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        handleSearch(item);
+                      }}
+                      className="flex w-full items-center px-5 py-3 font-bold text-stone-700 transition hover:bg-orange-50"
+                    >
+                      {item}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
-        <section className="mt-8 w-full space-y-6 md:hidden">
-          {topGap && (
-            <FeatureCard
-              label="🚨 今日踩雷榜 Top 1"
-              name={topGap.name}
-              subtitle="期待落差指數"
-              score="92"
-              searchText="被搜尋 2,104 次"
-              buttonText="查看分析報告"
-              tone="red"
-              store={topGap}
-              onSearch={handleSearch}
-            />
-          )}
+        <section className="mt-7 w-full space-y-4 md:hidden">
+          <HeroWideCard
+            label="今日踩雷榜 TOP 1"
+            name={gapStores[0]?.name || "老四川"}
+            subtitle="期待落差指數"
+            score="92"
+            meta="被搜尋 2,104 次"
+            store={gapStores[0]}
+            tone="red"
+            onSearch={handleSearch}
+          />
 
-          <Dots />
+          <HeroWideCard
+            label="本週穩定榜 TOP 1"
+            name={stableStoreList[0]?.name || "饗食天堂"}
+            subtitle="穩定度"
+            score="88%"
+            meta="被搜尋 6,215 次"
+            store={stableStoreList[0]}
+            tone="green"
+            onSearch={handleSearch}
+          />
 
-          {topStable && (
-            <FeatureCard
-              label="⭐ 本週穩定榜 Top 1"
-              name={topStable.name}
-              subtitle="穩定度"
-              score="88%"
-              searchText="被搜尋 6,215 次"
-              buttonText="查看分析報告"
-              tone="green"
-              store={topStable}
-              onSearch={handleSearch}
-            />
-          )}
-
-          <Dots />
-
-          <MobileHotList stores={hotStores} onSearch={handleSearch} />
+          <MobileHotWaterfall stores={hotStores} onSearch={handleSearch} />
         </section>
 
         <section className="mt-14 hidden w-full gap-6 md:grid md:grid-cols-3">
@@ -333,27 +326,27 @@ export default function Home() {
   );
 }
 
-function FeatureCard({
+function HeroWideCard({
   label,
   name,
   subtitle,
   score,
-  searchText,
-  buttonText,
-  tone,
+  meta,
   store,
+  tone,
   onSearch,
 }: {
   label: string;
   name: string;
   subtitle: string;
   score: string;
-  searchText: string;
-  buttonText: string;
+  meta: string;
+  store?: StoreItem;
   tone: "red" | "green";
-  store: StoreItem;
   onSearch: (value: string) => void;
 }) {
+  if (!store) return null;
+
   const photoUrl = getPhotoUrl(store.photoName);
 
   const toneClass =
@@ -362,50 +355,53 @@ function FeatureCard({
           card: "bg-red-50 border-red-100",
           pill: "bg-red-100 text-red-600",
           score: "text-red-600",
-          button: "border-orange-500 text-orange-600",
+          button: "border-red-400 text-red-600",
         }
       : {
           card: "bg-green-50 border-green-100",
           pill: "bg-green-100 text-green-700",
           score: "text-green-700",
-          button: "border-green-600 text-green-700",
+          button: "border-green-500 text-green-700",
         };
 
   return (
     <button
       onClick={() => onSearch(store.query)}
-      className={`w-full rounded-[28px] border p-4 text-left shadow-[5px_5px_0_#ead8b5] ${toneClass.card}`}
+      className={`block w-full overflow-hidden rounded-[28px] border p-4 text-left shadow-[5px_5px_0_#ead8b5] ${toneClass.card}`}
     >
-      <div className="grid grid-cols-[1fr_44%] gap-4">
-        <div className="flex min-w-0 flex-col justify-between py-1">
+      <div className="flex gap-4">
+        <div className="flex flex-1 flex-col justify-between">
           <div>
-            <div className={`w-fit rounded-2xl px-3 py-2 text-sm font-black ${toneClass.pill}`}>
+            <div className={`w-fit rounded-2xl px-3 py-2 text-xs font-black ${toneClass.pill}`}>
               {label}
             </div>
 
-            <h2 className="mt-5 text-4xl font-black leading-tight text-stone-950">
-              {name}
-            </h2>
+            <h3 className="mt-4 text-3xl font-black">{name}</h3>
 
-            <p className="mt-4 text-lg font-bold text-stone-700">
-              {subtitle} <span className={`text-2xl font-black ${toneClass.score}`}>{score}</span>
+            <p className="mt-3 text-base font-bold text-stone-700">
+              {subtitle}{" "}
+              <span className={`text-2xl font-black ${toneClass.score}`}>
+                {score}
+              </span>
             </p>
 
-            <p className="mt-2 text-lg font-bold text-stone-700">{searchText}</p>
+            <p className="mt-1 text-sm font-bold text-stone-600">{meta}</p>
           </div>
 
           <div
-            className={`mt-5 w-fit rounded-2xl border bg-white px-4 py-3 text-base font-black ${toneClass.button}`}
+            className={`mt-4 w-fit rounded-2xl border bg-white px-4 py-2 text-sm font-black ${toneClass.button}`}
           >
-            {buttonText}
+            查看分析報告
           </div>
         </div>
 
-        <div className="h-48 overflow-hidden rounded-3xl bg-stone-200">
+        <div className="h-40 w-[42%] shrink-0 overflow-hidden rounded-3xl bg-stone-200">
           {photoUrl ? (
             <img src={photoUrl} alt={name} className="h-full w-full object-cover" />
           ) : (
-            <div className="flex h-full items-center justify-center text-5xl">🍽️</div>
+            <div className="flex h-full items-center justify-center text-4xl">
+              🍽️
+            </div>
           )}
         </div>
       </div>
@@ -413,17 +409,7 @@ function FeatureCard({
   );
 }
 
-function Dots() {
-  return (
-    <div className="flex justify-center gap-2">
-      <span className="h-2.5 w-2.5 rounded-full bg-stone-400" />
-      <span className="h-2.5 w-2.5 rounded-full bg-stone-200" />
-      <span className="h-2.5 w-2.5 rounded-full bg-stone-200" />
-    </div>
-  );
-}
-
-function MobileHotList({
+function MobileHotWaterfall({
   stores,
   onSearch,
 }: {
@@ -431,36 +417,47 @@ function MobileHotList({
   onSearch: (value: string) => void;
 }) {
   return (
-    <div className="rounded-[28px] border border-stone-200 bg-white p-5 text-left shadow-[5px_5px_0_#ead8b5]">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-black">🔥 熱門搜尋</h2>
-        <button className="text-sm font-black text-orange-500">查看全部 ›</button>
+    <div className="pt-2 text-left">
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-2xl font-black">🔥 熱門搜尋 TOP 5</h2>
+        <button className="text-sm font-black text-orange-500">查看更多 ›</button>
       </div>
 
-      <div className="mt-5 flex gap-3 overflow-x-auto pb-2">
+      <div className="grid grid-cols-2 gap-3">
         {stores.slice(0, 5).map((store, index) => {
           const photoUrl = getPhotoUrl(store.photoName);
+          const tall = index === 0 || index === 3;
 
           return (
             <button
               key={store.query}
               onClick={() => onSearch(store.query)}
-              className="w-[118px] shrink-0 text-left"
+              className={`overflow-hidden rounded-[24px] bg-white text-left shadow-sm ${
+                tall ? "row-span-2" : ""
+              }`}
             >
-              <div className="relative h-28 overflow-hidden rounded-2xl bg-stone-200 shadow-sm">
+              <div className={`${tall ? "h-44" : "h-28"} relative bg-stone-200`}>
                 {photoUrl ? (
                   <img src={photoUrl} alt={store.name} className="h-full w-full object-cover" />
                 ) : (
-                  <div className="flex h-full items-center justify-center text-4xl">🍽️</div>
+                  <div className="flex h-full items-center justify-center text-4xl">
+                    🍽️
+                  </div>
                 )}
 
-                <div className="absolute left-2 top-2 flex h-7 w-7 items-center justify-center rounded-lg bg-orange-500 text-sm font-black text-white">
+                <div className="absolute left-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-orange-500 text-sm font-black text-white">
                   {index + 1}
                 </div>
               </div>
 
-              <div className="mt-3 truncate text-lg font-black text-stone-900">{store.name}</div>
-              <div className="mt-1 truncate text-sm font-bold text-stone-400">{store.subtitle}</div>
+              <div className="p-3">
+                <div className="truncate text-lg font-black text-stone-900">
+                  {store.name}
+                </div>
+                <div className="mt-1 truncate text-xs font-bold text-stone-400">
+                  {store.subtitle}
+                </div>
+              </div>
             </button>
           );
         })}
@@ -483,7 +480,6 @@ function HomeCard({
   return (
     <div className="rounded-[28px] border border-stone-200 bg-white p-8 text-left shadow-sm">
       <h2 className="text-2xl font-black">{title}</h2>
-
       <p className="mt-2 text-sm font-bold text-stone-500">{subtitle}</p>
 
       <div className="mt-8 space-y-4">
@@ -507,8 +503,12 @@ function HomeCard({
               </div>
 
               <div className="px-5 py-4">
-                <div className="text-xl font-black text-stone-700">{store.name}</div>
-                <div className="mt-1 text-sm font-bold text-stone-400">{store.subtitle}</div>
+                <div className="text-xl font-black text-stone-700">
+                  {store.name}
+                </div>
+                <div className="mt-1 text-sm font-bold text-stone-400">
+                  {store.subtitle}
+                </div>
               </div>
             </button>
           );
