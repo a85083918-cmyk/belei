@@ -65,8 +65,7 @@ export default function Home() {
 
   const [hotStores, setHotStores] = useState<StoreItem[]>(hotSearches);
   const [gapStores, setGapStores] = useState<StoreItem[]>(expectationGap);
-  const [stableStoreList, setStableStoreList] =
-    useState<StoreItem[]>(stableStores);
+  const [stableStoreList, setStableStoreList] = useState<StoreItem[]>(stableStores);
 
   useEffect(() => {
     loadHomeRankings();
@@ -84,10 +83,7 @@ export default function Home() {
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (
-        recentRef.current &&
-        !recentRef.current.contains(event.target as Node)
-      ) {
+      if (recentRef.current && !recentRef.current.contains(event.target as Node)) {
         setShowRecent(false);
       }
     }
@@ -144,9 +140,7 @@ export default function Home() {
     return await Promise.all(
       stores.map(async (store) => {
         try {
-          const res = await fetch(
-            `/api/search?q=${encodeURIComponent(store.query)}`
-          );
+          const res = await fetch(`/api/search?q=${encodeURIComponent(store.query)}`);
           const data = await res.json();
           const firstPlace = data.places?.[0];
 
@@ -269,24 +263,24 @@ export default function Home() {
           )}
         </div>
 
-        <section className="mt-10 w-full space-y-5 md:hidden">
+        <section className="mt-10 w-full space-y-6 md:hidden">
           <MobileRankSection
-            title="🔥 熱門搜尋"
-            subtitle="大家最近正在查的餐廳"
+            title="🔥 本週熱門搜尋"
+            subtitle="大家最近最常查的餐廳"
             stores={hotStores}
             onSearch={handleSearch}
           />
 
           <MobileRankSection
             title="💥 本週期待落差最高"
-            subtitle="Google 高分，但 BeLei 可能提醒你小心"
+            subtitle="越紅越需要先看 BeLei"
             stores={gapStores}
             onSearch={handleSearch}
           />
 
           <MobileRankSection
             title="⭐ 本週最穩定"
-            subtitle="近期評論穩定，踩雷風險較低"
+            subtitle="近期表現比較穩，不容易踩雷"
             stores={stableStoreList}
             onSearch={handleSearch}
           />
@@ -335,58 +329,97 @@ function MobileRankSection({
   stores: StoreItem[];
   onSearch: (value: string) => void;
 }) {
+  const top = stores[0];
+
+  if (!top) return null;
+
+  const photoUrl = getPhotoUrl(top.photoName);
+
   return (
-    <div className="rounded-[26px] border border-stone-200 bg-white/90 p-5 text-left shadow-[5px_5px_0_#ead8b5]">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h2 className="text-2xl font-black">{title}</h2>
-          <p className="mt-1 text-sm font-bold text-stone-500">{subtitle}</p>
+    <div className="space-y-3 text-left">
+      <div className="overflow-hidden rounded-[28px] border border-stone-200 bg-white shadow-[5px_5px_0_#ead8b5]">
+        <div className="p-5">
+          <div className="text-sm font-black text-orange-500">{title} TOP 1</div>
+
+          <h2 className="mt-2 text-3xl font-black text-stone-900">{top.name}</h2>
+
+          <p className="mt-2 text-sm font-bold leading-6 text-stone-500">
+            {subtitle}
+          </p>
         </div>
 
-        <button className="shrink-0 text-sm font-black text-orange-500">
-          查看更多 ›
+        <button
+          onClick={() => onSearch(top.query)}
+          className="block w-full text-left"
+        >
+          <div className="h-52 w-full bg-stone-200">
+            {photoUrl ? (
+              <img
+                src={photoUrl}
+                alt={top.name}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center text-5xl">
+                🍽️
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center justify-between gap-3 p-5">
+            <div>
+              <div className="text-lg font-black text-stone-900">{top.name}</div>
+              <div className="mt-1 text-sm font-bold text-stone-400">
+                {top.subtitle}
+              </div>
+            </div>
+
+            <div className="shrink-0 rounded-full bg-orange-100 px-4 py-2 text-sm font-black text-orange-600">
+              查看報告
+            </div>
+          </div>
         </button>
       </div>
 
-      <div className="mt-5 flex gap-3 overflow-x-auto pb-2">
-        {stores.slice(0, 3).map((store, index) => {
-          const photoUrl = getPhotoUrl(store.photoName);
+      {stores.length > 1 && (
+        <div className="overflow-x-auto pb-2">
+          <div className="flex gap-3">
+            {stores.slice(1).map((store, index) => {
+              const img = getPhotoUrl(store.photoName);
 
-          return (
-            <button
-              key={store.query}
-              onClick={() => onSearch(store.query)}
-              className="min-w-[145px] rounded-2xl border border-stone-100 bg-stone-50 p-3 text-left shadow-sm"
-            >
-              <div className="relative h-24 w-full overflow-hidden rounded-xl bg-stone-200">
-                {photoUrl ? (
-                  <img
-                    src={photoUrl}
-                    alt={store.name}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center text-3xl">
-                    🍽️
+              return (
+                <button
+                  key={store.query}
+                  onClick={() => onSearch(store.query)}
+                  className="w-[98px] shrink-0 text-left"
+                >
+                  <div className="relative h-20 overflow-hidden rounded-2xl bg-stone-200 shadow-sm">
+                    {img ? (
+                      <img
+                        src={img}
+                        alt={store.name}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center">
+                        🍽️
+                      </div>
+                    )}
+
+                    <div className="absolute left-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-orange-500 text-xs font-black text-white">
+                      {index + 2}
+                    </div>
                   </div>
-                )}
 
-                <div className="absolute left-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-orange-500 text-sm font-black text-white">
-                  {index + 1}
-                </div>
-              </div>
-
-              <div className="mt-3 text-lg font-black text-stone-800">
-                {store.name}
-              </div>
-
-              <div className="mt-1 text-xs font-bold text-stone-400">
-                {store.subtitle}
-              </div>
-            </button>
-          );
-        })}
-      </div>
+                  <div className="mt-2 truncate text-center text-xs font-black text-stone-700">
+                    {store.name}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
