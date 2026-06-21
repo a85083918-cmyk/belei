@@ -12,10 +12,32 @@ type Place = {
   };
 };
 
-const cityKeywords = ["台北", "新北", "桃園", "台中", "台南", "高雄"];
+const cityKeywords = ["台北", "臺北", "新北", "桃園", "台中", "臺中", "台南", "臺南", "高雄"];
+
+function normalizeText(text: string) {
+  return text.replaceAll("臺", "台");
+}
+
+function getCityFromKeyword(text: string) {
+  const normalized = normalizeText(text);
+
+  if (normalized.includes("台北")) return "台北";
+  if (normalized.includes("新北")) return "新北";
+  if (normalized.includes("桃園")) return "桃園";
+  if (normalized.includes("台中")) return "台中";
+  if (normalized.includes("台南")) return "台南";
+  if (normalized.includes("高雄")) return "高雄";
+
+  return null;
+}
 
 function hasCityKeyword(text: string) {
-  return cityKeywords.some((city) => text.includes(city));
+  return getCityFromKeyword(text) !== null;
+}
+
+function isPlaceInCity(place: Place, city: string | null) {
+  if (!city) return true;
+  return normalizeText(place.address || "").includes(city);
 }
 
 async function getBaseUrl() {
@@ -63,18 +85,28 @@ export default async function SearchPage({
   }
 
   const data = await searchPlaces(keyword);
-  const places: Place[] = data.places || [];
+  const rawPlaces: Place[] = data.places || [];
+
+  const selectedCity = getCityFromKeyword(keyword);
+
+  const places = selectedCity
+    ? rawPlaces.filter((place) => isPlaceInCity(place, selectedCity))
+    : rawPlaces;
 
   if (places.length === 0) {
     return (
       <EmptyState
         title="找不到符合的餐廳"
-        description={`你搜尋的是：「${keyword}」。請確認店名或加上地區。`}
+        description={
+          selectedCity
+            ? `你搜尋的是：「${keyword}」。目前沒有找到 ${selectedCity} 的符合分店。`
+            : `你搜尋的是：「${keyword}」。請確認店名或加上地區。`
+        }
       />
     );
   }
 
-  if (places.length > 5 && !hasCityKeyword(keyword)) {
+  if (rawPlaces.length > 5 && !hasCityKeyword(keyword)) {
     return (
       <main className="min-h-screen bg-[#fff8e8] px-5 py-10 text-black">
         <div className="mx-auto max-w-4xl">
@@ -97,7 +129,7 @@ export default async function SearchPage({
             </p>
 
             <div className="mt-8 flex flex-wrap gap-4">
-              {cityKeywords.map((city) => (
+              {["台北", "新北", "桃園", "台中", "台南", "高雄"].map((city) => (
                 <Link
                   key={city}
                   href={`/search?q=${encodeURIComponent(`${city} ${keyword}`)}`}
@@ -131,7 +163,9 @@ export default async function SearchPage({
             你搜尋的是：
             <span className="font-bold text-black"> {keyword}</span>
             <br />
-            系統找到多個可能分店，請先確認正確店家。
+            {selectedCity
+              ? `目前只顯示 ${selectedCity} 的符合分店。`
+              : "系統找到多個可能分店，請先確認正確店家。"}
           </p>
         </section>
 
