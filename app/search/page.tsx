@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { headers } from "next/headers";
+import type { ReactNode } from "react";
 
 type Place = {
   id: string;
@@ -12,27 +13,34 @@ type Place = {
   };
 };
 
-const cityKeywords = ["台北", "臺北", "新北", "桃園", "台中", "臺中", "台南", "臺南", "高雄"];
+const CITY_LIST = ["台北", "新北", "桃園", "台中", "台南", "高雄"];
 
 function normalizeText(text: string) {
-  return text.replaceAll("臺", "台");
+  return text.replaceAll("臺", "台").trim();
 }
 
-function getCityFromKeyword(text: string) {
-  const normalized = normalizeText(text);
+function getCityFromKeyword(text: string): string | null {
+  const q = normalizeText(text);
 
-  if (normalized.includes("台北")) return "台北";
-  if (normalized.includes("新北")) return "新北";
-  if (normalized.includes("桃園")) return "桃園";
-  if (normalized.includes("台中")) return "台中";
-  if (normalized.includes("台南")) return "台南";
-  if (normalized.includes("高雄")) return "高雄";
+  if (q.includes("台北")) return "台北";
+  if (q.includes("新北")) return "新北";
+  if (q.includes("桃園")) return "桃園";
+  if (q.includes("台中")) return "台中";
+  if (q.includes("台南")) return "台南";
+  if (q.includes("高雄")) return "高雄";
 
   return null;
 }
 
-function hasCityKeyword(text: string) {
-  return getCityFromKeyword(text) !== null;
+function removeCityFromKeyword(text: string) {
+  let result = normalizeText(text);
+
+  CITY_LIST.forEach((city) => {
+    result = result.replaceAll(city, "");
+    result = result.replaceAll(`${city}市`, "");
+  });
+
+  return result.replace(/\s+/g, " ").trim();
 }
 
 function isPlaceInCity(place: Place, city: string | null) {
@@ -42,8 +50,9 @@ function isPlaceInCity(place: Place, city: string | null) {
 
 async function getBaseUrl() {
   const h = await headers();
-  const host = h.get("host");
-  const proto = h.get("x-forwarded-proto") || "https";
+  const host = h.get("host") || "localhost:3000";
+  const proto = h.get("x-forwarded-proto") || "http";
+
   return `${proto}://${host}`;
 }
 
@@ -56,7 +65,16 @@ async function searchPlaces(keyword: string) {
       { cache: "no-store" }
     );
 
-    return await res.json();
+    const text = await res.text();
+
+    try {
+      return JSON.parse(text);
+    } catch {
+      return {
+        places: [],
+        message: "API 回傳不是 JSON",
+      };
+    }
   } catch (error: any) {
     return {
       places: [],
@@ -88,25 +106,31 @@ export default async function SearchPage({
   const rawPlaces: Place[] = data.places || [];
 
   const selectedCity = getCityFromKeyword(keyword);
+  const cleanKeyword = removeCityFromKeyword(keyword);
 
   const places = selectedCity
     ? rawPlaces.filter((place) => isPlaceInCity(place, selectedCity))
     : rawPlaces;
 
-  if (places.length === 0) {
+  if (selectedCity && places.length === 0) {
     return (
-      <EmptyState
-        title="找不到符合的餐廳"
-        description={
-          selectedCity
-            ? `你搜尋的是：「${keyword}」。目前沒有找到 ${selectedCity} 的符合分店。`
-            : `你搜尋的是：「${keyword}」。請確認店名或加上地區。`
-        }
+      <NoCityMatchState
+        keyword={cleanKeyword || keyword}
+        city={selectedCity}
       />
     );
   }
 
-  if (rawPlaces.length > 5 && !hasCityKeyword(keyword)) {
+  if (rawPlaces.length === 0) {
+    return (
+      <EmptyState
+        title="找不到符合的餐廳"
+        description={`你搜尋的是：「${keyword}」。請確認店名或加上地區。`}
+      />
+    );
+  }
+
+  if (!selectedCity && rawPlaces.length > 5) {
     return (
       <main className="min-h-screen bg-[#fff8e8] px-5 py-10 text-black">
         <div className="mx-auto max-w-4xl">
@@ -129,7 +153,7 @@ export default async function SearchPage({
             </p>
 
             <div className="mt-8 flex flex-wrap gap-4">
-              {["台北", "新北", "桃園", "台中", "台南", "高雄"].map((city) => (
+              {CITY_LIST.map((city) => (
                 <Link
                   key={city}
                   href={`/search?q=${encodeURIComponent(`${city} ${keyword}`)}`}
@@ -212,6 +236,41 @@ export default async function SearchPage({
   );
 }
 
+function NoCityMatchState({
+  keyword,
+  city,
+}: {
+  keyword: string;
+  city: string;
+}) {
+  return (
+    <main className="min-h-screen bg-[#fff8e8] px-5 py-10 text-black">
+      <div className="mx-auto max-w-md">
+        <div className="rounded-[32px] border-[3px] border-stone-900 bg-[#fffdf7] p-8 shadow-[8px_8px_0px_#f3e7c9]">
+          <div className="mb-4 text-5xl">⚠️</div>
+
+          <h1 className="text-3xl font-black leading-tight">
+            ⚠️ 這個城市可能沒有分店
+          </h1>
+
+          <p className="mt-5 text-lg leading-8 text-stone-600">
+            <span className="font-bold">{keyword}</span> 在{" "}
+            <span className="font-bold">{city}</span>{" "}
+            可能沒有符合的餐飲分店，建議改查其他城市或確認店名。
+          </p>
+
+          <Link
+            href="/"
+            className="mt-8 inline-flex rounded-2xl bg-orange-500 px-6 py-3 font-bold text-white shadow-lg transition hover:scale-105"
+          >
+            回首頁重新搜尋
+          </Link>
+        </div>
+      </div>
+    </main>
+  );
+}
+
 function EmptyState({
   title,
   description,
@@ -221,16 +280,16 @@ function EmptyState({
 }) {
   return (
     <main className="min-h-screen bg-[#fff8e8] px-5 py-10 text-black">
-      <div className="mx-auto max-w-3xl rounded-3xl border border-gray-200 bg-white p-8 shadow-sm">
+      <div className="mx-auto max-w-md rounded-[32px] border-[3px] border-stone-900 bg-[#fffdf7] p-8 shadow-[8px_8px_0px_#f3e7c9]">
         <div className="text-5xl">⚠️</div>
 
-        <h1 className="mt-5 text-3xl font-black">{title}</h1>
+        <h1 className="mt-5 text-3xl font-black leading-tight">{title}</h1>
 
-        <p className="mt-3 leading-8 text-gray-600">{description}</p>
+        <p className="mt-5 text-lg leading-8 text-stone-600">{description}</p>
 
         <Link
           href="/"
-          className="mt-6 inline-block rounded-2xl bg-orange-500 px-6 py-3 font-bold text-white"
+          className="mt-8 inline-flex rounded-2xl bg-orange-500 px-6 py-3 font-bold text-white shadow-lg transition hover:scale-105"
         >
           回首頁重新搜尋
         </Link>
@@ -239,7 +298,7 @@ function EmptyState({
   );
 }
 
-function Badge({ children }: { children: React.ReactNode }) {
+function Badge({ children }: { children: ReactNode }) {
   return (
     <span className="rounded-full bg-orange-100 px-4 py-2 text-sm font-bold text-orange-700">
       {children}
