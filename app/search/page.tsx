@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 type Place = {
@@ -18,11 +19,33 @@ function hasCityKeyword(text: string) {
 }
 
 async function getBaseUrl() {
-  if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}`;
-  }
+  const h = await headers();
+  const host = h.get("host");
+  const proto = h.get("x-forwarded-proto") || "https";
+  return `${proto}://${host}`;
+}
 
-  return "http://localhost:3000";
+async function getPlaces(keyword: string) {
+  try {
+    const baseUrl = await getBaseUrl();
+
+    const res = await fetch(
+      `${baseUrl}/api/search?q=${encodeURIComponent(keyword)}`,
+      { cache: "no-store" }
+    );
+
+    const data = await res.json();
+
+    return {
+      places: (data.places || []) as Place[],
+      message: data.message || null,
+    };
+  } catch (error: any) {
+    return {
+      places: [] as Place[],
+      message: error.message || "搜尋資料讀取失敗",
+    };
+  }
 }
 
 export default async function SearchPage({
@@ -44,23 +67,13 @@ export default async function SearchPage({
     );
   }
 
-  const baseUrl = await getBaseUrl();
-
-  const res = await fetch(
-    `${baseUrl}/api/search?q=${encodeURIComponent(keyword)}`,
-    {
-      cache: "no-store",
-    }
-  );
-
-  const data = await res.json();
-  const places: Place[] = data.places || [];
+  const { places, message } = await getPlaces(keyword);
 
   if (places.length === 0) {
     return (
       <EmptyState
         title="找不到符合的餐廳"
-        description={`你搜尋的是：「${keyword}」。請確認店名或加上地區。`}
+        description={message || `你搜尋的是：「${keyword}」。請確認店名或加上地區。`}
       />
     );
   }
@@ -85,9 +98,7 @@ export default async function SearchPage({
             BeLei 分店精準判定
           </p>
 
-          <h1 className="mt-2 text-4xl font-black">
-            請選擇你要查的分店
-          </h1>
+          <h1 className="mt-2 text-4xl font-black">請選擇你要查的分店</h1>
 
           <p className="mt-3 leading-8 text-gray-600">
             你搜尋的是：
