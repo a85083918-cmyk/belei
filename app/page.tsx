@@ -71,8 +71,7 @@ export default function Home() {
 
   const [hotStores, setHotStores] = useState<StoreItem[]>(hotSearches);
   const [gapStores, setGapStores] = useState<StoreItem[]>(expectationGap);
-  const [stableStoreList, setStableStoreList] =
-    useState<StoreItem[]>(stableStores);
+  const [stableStoreList, setStableStoreList] = useState<StoreItem[]>(stableStores);
 
   useEffect(() => {
     loadHomeRankings();
@@ -191,7 +190,7 @@ export default function Home() {
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/45 to-[#fff8e8]" />
 
-        <div className="relative mx-auto flex min-h-[430px] max-w-5xl flex-col px-4 pb-12 pt-6 text-white md:min-h-[560px]">
+        <div className="relative mx-auto flex min-h-[360px] max-w-5xl flex-col px-4 pb-10 pt-6 text-white md:min-h-[520px]">
           <div className="flex items-center justify-between">
             <h1 className="text-3xl font-black tracking-tight md:text-6xl">
               Be<span className="text-orange-500">Lei</span>
@@ -199,18 +198,18 @@ export default function Home() {
             <div className="text-2xl">🔔</div>
           </div>
 
-          <div className="mt-14 text-center md:mt-20">
+          <div className="mt-10 text-center md:mt-20">
             <div className="mx-auto w-fit rounded-full bg-white/15 px-5 py-2 text-sm font-black text-orange-200 backdrop-blur">
               吃之前，先查查
             </div>
 
-            <h2 className="mt-5 text-5xl font-black leading-tight md:text-7xl">
+            <h2 className="mt-4 text-5xl font-black leading-tight md:text-7xl">
               吃之前，
               <br />
               先<span className="text-orange-400">查查</span>
             </h2>
 
-            <p className="mt-4 text-lg font-bold leading-8 text-white/90 md:text-2xl">
+            <p className="mt-3 text-base font-bold leading-7 text-white/90 md:text-2xl">
               Google 告訴你有多紅
               <br />
               我們告訴你會不會後悔
@@ -219,7 +218,7 @@ export default function Home() {
 
           <div
             ref={recentRef}
-            className="relative mx-auto mt-8 w-full max-w-3xl rounded-[26px] border border-white/30 bg-white p-2 shadow-[0_18px_45px_rgba(0,0,0,0.25)]"
+            className="relative mx-auto mt-6 w-full max-w-3xl rounded-[24px] border border-white/30 bg-white p-2 shadow-[0_18px_45px_rgba(0,0,0,0.25)]"
           >
             <div className="flex gap-2">
               <input
@@ -237,7 +236,7 @@ export default function Home() {
 
               <button
                 onClick={() => handleSearch()}
-                className="shrink-0 rounded-2xl bg-orange-500 px-5 py-4 text-lg font-black text-white hover:bg-orange-600 md:px-8"
+                className="shrink-0 rounded-2xl bg-orange-500 px-5 py-4 text-base font-black text-white hover:bg-orange-600 md:px-8 md:text-lg"
               >
                 搜尋
               </button>
@@ -281,7 +280,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="mx-auto -mt-8 flex max-w-5xl flex-col px-4 pb-10 md:mt-10">
+      <section className="mx-auto -mt-4 flex max-w-5xl flex-col px-4 pb-10 md:mt-10">
         <div className="space-y-4 md:hidden">
           <FixedImageRankCard
             label="💥 今日踩雷榜 TOP 1"
@@ -376,33 +375,33 @@ function FixedImageRankCard({
   return (
     <button
       onClick={() => onSearch(query)}
-      className={`block w-full overflow-hidden rounded-[28px] border p-4 text-left shadow-[5px_5px_0_#ead8b5] ${toneClass.card}`}
+      className={`block w-full overflow-hidden rounded-[26px] border p-4 text-left shadow-[5px_5px_0_#ead8b5] ${toneClass.card}`}
     >
-      <div className="flex gap-4">
+      <div className="flex gap-3">
         <div className="flex flex-1 flex-col justify-between">
           <div>
             <div className={`w-fit rounded-2xl px-3 py-2 text-xs font-black ${toneClass.pill}`}>
               {label}
             </div>
 
-            <h3 className="mt-4 text-3xl font-black">{name}</h3>
+            <h3 className="mt-3 text-2xl font-black">{name}</h3>
 
-            <p className="mt-3 text-base font-bold text-stone-700">
+            <p className="mt-2 text-sm font-bold text-stone-700">
               {subtitle}{" "}
-              <span className={`text-2xl font-black ${toneClass.score}`}>{score}</span>
+              <span className={`text-xl font-black ${toneClass.score}`}>{score}</span>
             </p>
 
-            <p className="mt-1 text-sm font-bold text-stone-600">{meta}</p>
+            <p className="mt-1 text-xs font-bold text-stone-600">{meta}</p>
           </div>
 
           <div
-            className={`mt-4 w-fit rounded-2xl border bg-white px-4 py-2 text-sm font-black ${toneClass.button}`}
+            className={`mt-3 w-fit rounded-2xl border bg-white px-3 py-2 text-xs font-black ${toneClass.button}`}
           >
             查看分析報告
           </div>
         </div>
 
-        <div className="h-40 w-[42%] shrink-0 overflow-hidden rounded-3xl bg-stone-200">
+        <div className="h-32 w-[38%] shrink-0 overflow-hidden rounded-[22px] bg-stone-200">
           <img src={imageSrc} alt={name} className="h-full w-full object-cover" />
         </div>
       </div>
@@ -418,12 +417,10 @@ function MobileHotList({
   onSearch: (value: string) => void;
 }) {
   return (
-    <div className="rounded-[28px] border border-stone-200 bg-white p-5 text-left shadow-[5px_5px_0_#ead8b5]">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-black">🔥 熱門搜尋 TOP 5</h2>
-      </div>
+    <div className="rounded-[26px] border border-stone-200 bg-white p-5 text-left shadow-[5px_5px_0_#ead8b5]">
+      <h2 className="text-2xl font-black">🔥 熱門搜尋 TOP 5</h2>
 
-      <div className="mt-5 flex gap-3 overflow-x-auto pb-2">
+      <div className="mt-5 space-y-3">
         {stores.slice(0, 5).map((store, index) => {
           const photoUrl = getPhotoUrl(store.photoName);
 
@@ -431,25 +428,28 @@ function MobileHotList({
             <button
               key={store.query}
               onClick={() => onSearch(store.query)}
-              className="w-[118px] shrink-0 text-left"
+              className="flex w-full items-center gap-3 rounded-2xl bg-stone-50 p-3 text-left transition hover:bg-orange-50"
             >
-              <div className="relative h-28 overflow-hidden rounded-2xl bg-stone-200 shadow-sm">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-500 text-sm font-black text-white">
+                {index + 1}
+              </div>
+
+              <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-stone-200">
                 {photoUrl ? (
                   <img src={photoUrl} alt={store.name} className="h-full w-full object-cover" />
                 ) : (
-                  <div className="flex h-full items-center justify-center text-4xl">🍽️</div>
+                  <div className="flex h-full items-center justify-center">🍽️</div>
                 )}
+              </div>
 
-                <div className="absolute left-2 top-2 flex h-7 w-7 items-center justify-center rounded-lg bg-orange-500 text-sm font-black text-white">
-                  {index + 1}
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-base font-black text-stone-900">
+                  {store.name}
                 </div>
-              </div>
 
-              <div className="mt-3 truncate text-lg font-black text-stone-900">
-                {store.name}
-              </div>
-              <div className="mt-1 truncate text-sm font-bold text-stone-400">
-                {store.subtitle}
+                <div className="truncate text-xs font-bold text-stone-500">
+                  {store.subtitle}
+                </div>
               </div>
             </button>
           );
@@ -490,8 +490,8 @@ function HomeCard({
                   <img src={photoUrl} alt={store.name} className="h-full w-full object-cover" />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-4xl">
-                    🍽️
-                  </div>
+  餐
+</div>
                 )}
               </div>
 
