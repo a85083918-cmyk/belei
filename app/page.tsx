@@ -58,7 +58,7 @@ function normalizeSearchKeyword(value: string) {
 
 function getPhotoUrl(photoName?: string | null) {
   if (!photoName) return null;
-  return `/api/photo?name=${encodeURIComponent(photoName)}&w=900`;
+  return `/api/photo?name=${encodeURIComponent(photoName)}&w=600`;
 }
 
 export default function Home() {
@@ -71,13 +71,13 @@ export default function Home() {
 
   const [hotStores, setHotStores] = useState<StoreItem[]>(hotSearches);
   const [gapStores, setGapStores] = useState<StoreItem[]>(expectationGap);
-  const [stableStoreList, setStableStoreList] = useState<StoreItem[]>(stableStores);
+  const [stableStoreList, setStableStoreList] =
+    useState<StoreItem[]>(stableStores);
 
   useEffect(() => {
     loadHomeRankings();
 
     const history = localStorage.getItem("belei-recent-searches");
-
     if (history) {
       try {
         setRecentSearches(JSON.parse(history));
@@ -101,7 +101,6 @@ export default function Home() {
   async function loadHomeRankings() {
     try {
       const res = await fetch("/api/home-rankings", { cache: "no-store" });
-
       if (!res.ok) throw new Error("首頁排行榜 API 載入失敗");
 
       const data = await res.json();
@@ -184,9 +183,15 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-[#fff8e8] px-4 py-5 text-stone-950">
-      <section className="mx-auto flex max-w-5xl flex-col items-center">
-        <div className="w-full max-w-3xl">
+    <main className="min-h-screen bg-[#fff8e8] text-stone-950">
+      <section className="relative overflow-hidden">
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: "url('/home/hero.jpg')" }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/45 to-[#fff8e8]" />
+
+        <div className="relative mx-auto flex min-h-[430px] max-w-5xl flex-col px-4 pb-12 pt-6 text-white md:min-h-[560px]">
           <div className="flex items-center justify-between">
             <h1 className="text-3xl font-black tracking-tight md:text-6xl">
               Be<span className="text-orange-500">Lei</span>
@@ -194,14 +199,18 @@ export default function Home() {
             <div className="text-2xl">🔔</div>
           </div>
 
-          <div className="mt-5">
-            <h2 className="text-4xl font-black leading-tight md:text-6xl">
+          <div className="mt-14 text-center md:mt-20">
+            <div className="mx-auto w-fit rounded-full bg-white/15 px-5 py-2 text-sm font-black text-orange-200 backdrop-blur">
+              吃之前，先查查
+            </div>
+
+            <h2 className="mt-5 text-5xl font-black leading-tight md:text-7xl">
               吃之前，
               <br />
-              先<span className="text-orange-500">查查</span>
+              先<span className="text-orange-400">查查</span>
             </h2>
 
-            <p className="mt-3 text-base font-bold leading-7 text-stone-700 md:text-xl">
+            <p className="mt-4 text-lg font-bold leading-8 text-white/90 md:text-2xl">
               Google 告訴你有多紅
               <br />
               我們告訴你會不會後悔
@@ -210,7 +219,7 @@ export default function Home() {
 
           <div
             ref={recentRef}
-            className="relative mt-6 w-full rounded-[24px] border border-stone-100 bg-white p-2 shadow-[5px_5px_0_#ead8b5]"
+            className="relative mx-auto mt-8 w-full max-w-3xl rounded-[26px] border border-white/30 bg-white p-2 shadow-[0_18px_45px_rgba(0,0,0,0.25)]"
           >
             <div className="flex gap-2">
               <input
@@ -223,23 +232,21 @@ export default function Home() {
                   if (e.key === "Escape") setShowRecent(false);
                 }}
                 placeholder="輸入餐廳名稱，例如：老新台菜"
-                className="min-w-0 flex-1 rounded-2xl bg-stone-50 px-4 py-4 text-sm font-bold outline-none focus:bg-orange-50 md:text-lg"
+                className="min-w-0 flex-1 rounded-2xl bg-stone-50 px-4 py-4 text-sm font-bold text-stone-800 outline-none focus:bg-orange-50 md:text-lg"
               />
 
               <button
                 onClick={() => handleSearch()}
-                className="shrink-0 rounded-2xl bg-orange-500 px-5 py-4 text-lg font-black text-white hover:bg-orange-600"
+                className="shrink-0 rounded-2xl bg-orange-500 px-5 py-4 text-lg font-black text-white hover:bg-orange-600 md:px-8"
               >
-                🔍
+                搜尋
               </button>
             </div>
 
             {showRecent && recentSearches.length > 0 && (
               <div className="absolute left-0 right-0 top-full z-30 mt-3 overflow-hidden rounded-[24px] border border-stone-100 bg-white text-left shadow-[6px_6px_0_#ead8b5]">
                 <div className="flex items-center justify-between px-5 py-4">
-                  <div className="text-sm font-black text-stone-500">
-                    🕒 最近搜尋
-                  </div>
+                  <div className="text-sm font-black text-stone-500">🕒 最近搜尋</div>
 
                   <button
                     type="button"
@@ -272,34 +279,38 @@ export default function Home() {
             )}
           </div>
         </div>
+      </section>
 
-        <section className="mt-7 w-full space-y-4 md:hidden">
-          <HeroWideCard
-            label="今日踩雷榜 TOP 1"
+      <section className="mx-auto -mt-8 flex max-w-5xl flex-col px-4 pb-10 md:mt-10">
+        <div className="space-y-4 md:hidden">
+          <FixedImageRankCard
+            label="💥 今日踩雷榜 TOP 1"
             name={gapStores[0]?.name || "老四川"}
             subtitle="期待落差指數"
             score="92"
             meta="被搜尋 2,104 次"
-            store={gapStores[0]}
+            imageSrc="/home/risk-card.jpg"
             tone="red"
+            query={gapStores[0]?.query || "老四川"}
             onSearch={handleSearch}
           />
 
-          <HeroWideCard
-            label="本週穩定榜 TOP 1"
+          <FixedImageRankCard
+            label="⭐ 本週穩定榜 TOP 1"
             name={stableStoreList[0]?.name || "饗食天堂"}
             subtitle="穩定度"
             score="88%"
             meta="被搜尋 6,215 次"
-            store={stableStoreList[0]}
+            imageSrc="/home/stable-card.jpg"
             tone="green"
+            query={stableStoreList[0]?.query || "饗食天堂"}
             onSearch={handleSearch}
           />
 
-          <MobileHotWaterfall stores={hotStores} onSearch={handleSearch} />
-        </section>
+          <MobileHotList stores={hotStores} onSearch={handleSearch} />
+        </div>
 
-        <section className="mt-14 hidden w-full gap-6 md:grid md:grid-cols-3">
+        <section className="hidden w-full gap-6 md:grid md:grid-cols-3">
           <HomeCard
             title="🔥 熱門搜尋"
             subtitle="大家最近正在查的餐廳"
@@ -326,14 +337,15 @@ export default function Home() {
   );
 }
 
-function HeroWideCard({
+function FixedImageRankCard({
   label,
   name,
   subtitle,
   score,
   meta,
-  store,
+  imageSrc,
   tone,
+  query,
   onSearch,
 }: {
   label: string;
@@ -341,14 +353,11 @@ function HeroWideCard({
   subtitle: string;
   score: string;
   meta: string;
-  store?: StoreItem;
+  imageSrc: string;
   tone: "red" | "green";
+  query: string;
   onSearch: (value: string) => void;
 }) {
-  if (!store) return null;
-
-  const photoUrl = getPhotoUrl(store.photoName);
-
   const toneClass =
     tone === "red"
       ? {
@@ -366,7 +375,7 @@ function HeroWideCard({
 
   return (
     <button
-      onClick={() => onSearch(store.query)}
+      onClick={() => onSearch(query)}
       className={`block w-full overflow-hidden rounded-[28px] border p-4 text-left shadow-[5px_5px_0_#ead8b5] ${toneClass.card}`}
     >
       <div className="flex gap-4">
@@ -380,9 +389,7 @@ function HeroWideCard({
 
             <p className="mt-3 text-base font-bold text-stone-700">
               {subtitle}{" "}
-              <span className={`text-2xl font-black ${toneClass.score}`}>
-                {score}
-              </span>
+              <span className={`text-2xl font-black ${toneClass.score}`}>{score}</span>
             </p>
 
             <p className="mt-1 text-sm font-bold text-stone-600">{meta}</p>
@@ -396,20 +403,14 @@ function HeroWideCard({
         </div>
 
         <div className="h-40 w-[42%] shrink-0 overflow-hidden rounded-3xl bg-stone-200">
-          {photoUrl ? (
-            <img src={photoUrl} alt={name} className="h-full w-full object-cover" />
-          ) : (
-            <div className="flex h-full items-center justify-center text-4xl">
-              🍽️
-            </div>
-          )}
+          <img src={imageSrc} alt={name} className="h-full w-full object-cover" />
         </div>
       </div>
     </button>
   );
 }
 
-function MobileHotWaterfall({
+function MobileHotList({
   stores,
   onSearch,
 }: {
@@ -417,46 +418,38 @@ function MobileHotWaterfall({
   onSearch: (value: string) => void;
 }) {
   return (
-    <div className="pt-2 text-left">
-      <div className="mb-3 flex items-center justify-between">
+    <div className="rounded-[28px] border border-stone-200 bg-white p-5 text-left shadow-[5px_5px_0_#ead8b5]">
+      <div className="flex items-center justify-between">
         <h2 className="text-2xl font-black">🔥 熱門搜尋 TOP 5</h2>
-        <button className="text-sm font-black text-orange-500">查看更多 ›</button>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="mt-5 flex gap-3 overflow-x-auto pb-2">
         {stores.slice(0, 5).map((store, index) => {
           const photoUrl = getPhotoUrl(store.photoName);
-          const tall = index === 0 || index === 3;
 
           return (
             <button
               key={store.query}
               onClick={() => onSearch(store.query)}
-              className={`overflow-hidden rounded-[24px] bg-white text-left shadow-sm ${
-                tall ? "row-span-2" : ""
-              }`}
+              className="w-[118px] shrink-0 text-left"
             >
-              <div className={`${tall ? "h-44" : "h-28"} relative bg-stone-200`}>
+              <div className="relative h-28 overflow-hidden rounded-2xl bg-stone-200 shadow-sm">
                 {photoUrl ? (
                   <img src={photoUrl} alt={store.name} className="h-full w-full object-cover" />
                 ) : (
-                  <div className="flex h-full items-center justify-center text-4xl">
-                    🍽️
-                  </div>
+                  <div className="flex h-full items-center justify-center text-4xl">🍽️</div>
                 )}
 
-                <div className="absolute left-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-orange-500 text-sm font-black text-white">
+                <div className="absolute left-2 top-2 flex h-7 w-7 items-center justify-center rounded-lg bg-orange-500 text-sm font-black text-white">
                   {index + 1}
                 </div>
               </div>
 
-              <div className="p-3">
-                <div className="truncate text-lg font-black text-stone-900">
-                  {store.name}
-                </div>
-                <div className="mt-1 truncate text-xs font-bold text-stone-400">
-                  {store.subtitle}
-                </div>
+              <div className="mt-3 truncate text-lg font-black text-stone-900">
+                {store.name}
+              </div>
+              <div className="mt-1 truncate text-sm font-bold text-stone-400">
+                {store.subtitle}
               </div>
             </button>
           );
@@ -503,9 +496,7 @@ function HomeCard({
               </div>
 
               <div className="px-5 py-4">
-                <div className="text-xl font-black text-stone-700">
-                  {store.name}
-                </div>
+                <div className="text-xl font-black text-stone-700">{store.name}</div>
                 <div className="mt-1 text-sm font-bold text-stone-400">
                   {store.subtitle}
                 </div>
