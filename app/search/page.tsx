@@ -1,4 +1,5 @@
-import { redirect } from "next/navigation";
+import Link from "next/link";
+import { headers } from "next/headers";
 
 type Place = {
   id: string;
@@ -18,11 +19,28 @@ function hasCityKeyword(text: string) {
 }
 
 async function getBaseUrl() {
-  if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}`;
-  }
+  const h = await headers();
+  const host = h.get("host");
+  const proto = h.get("x-forwarded-proto") || "https";
+  return `${proto}://${host}`;
+}
 
-  return "http://localhost:3000";
+async function searchPlaces(keyword: string) {
+  try {
+    const baseUrl = await getBaseUrl();
+
+    const res = await fetch(
+      `${baseUrl}/api/search?q=${encodeURIComponent(keyword)}`,
+      { cache: "no-store" }
+    );
+
+    return await res.json();
+  } catch (error: any) {
+    return {
+      places: [],
+      message: error.message || "搜尋失敗",
+    };
+  }
 }
 
 export default async function SearchPage({
@@ -33,9 +51,9 @@ export default async function SearchPage({
   }>;
 }) {
   const params = await searchParams;
-  const keyword = params.q || "";
+  const keyword = params.q?.trim() || "";
 
-  if (!keyword.trim()) {
+  if (!keyword) {
     return (
       <EmptyState
         title="請輸入餐廳名稱"
@@ -44,16 +62,7 @@ export default async function SearchPage({
     );
   }
 
-  const baseUrl = await getBaseUrl();
-
-  const res = await fetch(
-    `${baseUrl}/api/search?q=${encodeURIComponent(keyword)}`,
-    {
-      cache: "no-store",
-    }
-  );
-
-  const data = await res.json();
+  const data = await searchPlaces(keyword);
   const places: Place[] = data.places || [];
 
   if (places.length === 0) {
@@ -66,28 +75,57 @@ export default async function SearchPage({
   }
 
   if (places.length > 5 && !hasCityKeyword(keyword)) {
-    redirect(`/select-city?q=${encodeURIComponent(keyword)}`);
-  }
+    return (
+      <main className="min-h-screen bg-[#fff8e8] px-5 py-10 text-black">
+        <div className="mx-auto max-w-4xl">
+          <Link href="/" className="font-bold text-orange-500">
+            ← 回首頁
+          </Link>
 
-  if (places.length === 1) {
-    redirect(`/restaurant/${encodeURIComponent(places[0].id)}`);
+          <section className="mt-6 rounded-3xl border border-gray-200 bg-white p-8 shadow-sm">
+            <p className="text-sm font-bold text-orange-500">
+              BeLei 分店精準判定
+            </p>
+
+            <h1 className="mt-2 text-4xl font-black">請先選擇縣市</h1>
+
+            <p className="mt-3 leading-8 text-gray-600">
+              你搜尋的是：
+              <span className="font-bold text-black"> {keyword}</span>
+              <br />
+              這個品牌在多個縣市都有分店。
+            </p>
+
+            <div className="mt-8 flex flex-wrap gap-4">
+              {cityKeywords.map((city) => (
+                <Link
+                  key={city}
+                  href={`/search?q=${encodeURIComponent(`${city} ${keyword}`)}`}
+                  className="rounded-2xl border border-gray-200 bg-orange-50 px-6 py-4 font-bold transition hover:bg-orange-100"
+                >
+                  {city}
+                </Link>
+              ))}
+            </div>
+          </section>
+        </div>
+      </main>
+    );
   }
 
   return (
-    <main className="min-h-screen bg-[#FAFAFA] px-5 py-10 text-black">
+    <main className="min-h-screen bg-[#fff8e8] px-5 py-10 text-black">
       <div className="mx-auto max-w-4xl">
-        <a href="/" className="font-bold text-orange-500">
+        <Link href="/" className="font-bold text-orange-500">
           ← 回首頁
-        </a>
+        </Link>
 
         <section className="mt-6 rounded-3xl border border-gray-200 bg-white p-8 shadow-sm">
           <p className="text-sm font-bold text-orange-500">
             BeLei 分店精準判定
           </p>
 
-          <h1 className="mt-2 text-4xl font-black">
-            請選擇你要查的分店
-          </h1>
+          <h1 className="mt-2 text-4xl font-black">請選擇你要查的分店</h1>
 
           <p className="mt-3 leading-8 text-gray-600">
             你搜尋的是：
@@ -102,7 +140,7 @@ export default async function SearchPage({
             const isOpen = place.currentOpeningHours?.openNow;
 
             return (
-              <a
+              <Link
                 key={place.id}
                 href={`/restaurant/${encodeURIComponent(place.id)}`}
                 className="block rounded-3xl border border-gray-200 bg-white p-6 shadow-sm transition hover:border-orange-300 hover:bg-orange-50"
@@ -131,7 +169,7 @@ export default async function SearchPage({
 
                   <Badge>點我產生 BeLei 報告</Badge>
                 </div>
-              </a>
+              </Link>
             );
           })}
         </section>
@@ -148,7 +186,7 @@ function EmptyState({
   description: string;
 }) {
   return (
-    <main className="min-h-screen bg-[#FAFAFA] px-5 py-10 text-black">
+    <main className="min-h-screen bg-[#fff8e8] px-5 py-10 text-black">
       <div className="mx-auto max-w-3xl rounded-3xl border border-gray-200 bg-white p-8 shadow-sm">
         <div className="text-5xl">⚠️</div>
 
@@ -156,12 +194,12 @@ function EmptyState({
 
         <p className="mt-3 leading-8 text-gray-600">{description}</p>
 
-        <a
+        <Link
           href="/"
           className="mt-6 inline-block rounded-2xl bg-orange-500 px-6 py-3 font-bold text-white"
         >
           回首頁重新搜尋
-        </a>
+        </Link>
       </div>
     </main>
   );
