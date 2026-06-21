@@ -7,20 +7,19 @@ type SearchPageProps = {
   }>;
 };
 
-const CITY_WORDS = [
-  "台北",
-  "臺北",
-  "新北",
-  "桃園",
-  "台中",
-  "臺中",
-  "台南",
-  "臺南",
-  "高雄",
-];
+type Place = {
+  id: string;
+  name: string;
+  address: string;
+  rating?: number | null;
+  userRatingCount?: number | null;
+  photoName?: string | null;
+};
+
+const CITY_WORDS = ["台北", "臺北", "新北", "桃園", "台中", "臺中", "台南", "臺南", "高雄"];
 
 function normalizeCity(city: string) {
-  return city.replace("臺", "台");
+  return city.replaceAll("臺", "台");
 }
 
 function getCityFromQuery(q: string): string | null {
@@ -41,7 +40,7 @@ function removeCityWords(q: string) {
   return result.trim();
 }
 
-function getCityFromAddress(address = "") {
+function getCityFromAddress(address = ""): string | null {
   if (address.includes("高雄")) return "高雄";
   if (address.includes("台中") || address.includes("臺中")) return "台中";
   if (address.includes("台南") || address.includes("臺南")) return "台南";
@@ -74,7 +73,6 @@ async function searchPlaces(q: string) {
       return {
         places: [],
         message: "API 回傳不是 JSON",
-        raw: text,
       };
     }
   } catch (error: any) {
@@ -85,7 +83,7 @@ async function searchPlaces(q: string) {
   }
 }
 
-function photoUrl(photoName: string | null) {
+function photoUrl(photoName: string | null | undefined) {
   if (!photoName) return null;
   return `/api/photo?name=${encodeURIComponent(photoName)}&w=900`;
 }
@@ -98,23 +96,23 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   const cleanQuery = removeCityWords(q);
 
   const data = q ? await searchPlaces(q) : { places: [] };
-  const allPlaces = data.places || [];
+  const allPlaces: Place[] = data.places || [];
 
-  const cityList = Array.from(
-    new Set(
+  const cityList: string[] = Array.from(
+    new Set<string>(
       allPlaces
-        .map((place: any) => getCityFromAddress(place.address))
-        .filter(Boolean)
+        .map((place: Place) => getCityFromAddress(place.address))
+        .filter((city: string | null): city is string => Boolean(city))
         .map((city: string) => normalizeCity(city))
     )
   );
 
   const shouldShowCitySelector = !selectedCity && cityList.length > 1;
 
-  const places = shouldShowCitySelector
+  const places: Place[] = shouldShowCitySelector
     ? []
     : selectedCity
-      ? allPlaces.filter((place: any) =>
+      ? allPlaces.filter((place: Place) =>
           normalizeCity(place.address || "").includes(normalizeCity(selectedCity))
         )
       : allPlaces;
@@ -150,7 +148,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
             <h2 className="mt-2 text-2xl font-bold">請先選擇你要查詢的縣市</h2>
 
             <div className="mt-5 flex flex-wrap gap-3">
-              {cityList.map((city) => (
+              {cityList.map((city: string) => (
                 <Link
                   key={city}
                   href={`/search?q=${encodeURIComponent(`${city} ${cleanQuery}`)}`}
@@ -167,15 +165,15 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
           </section>
         )}
 
-        {!shouldShowCitySelector && places.length === 0 ? (
+        {!shouldShowCitySelector && places.length === 0 && (
           <div className="mt-8 rounded-3xl border border-stone-300 bg-white/70 p-6">
             找不到店家。請試試「高雄 老新台菜」或更完整店名。
           </div>
-        ) : null}
+        )}
 
-        {!shouldShowCitySelector && places.length > 0 ? (
+        {!shouldShowCitySelector && places.length > 0 && (
           <div className="mt-8 grid gap-6 md:grid-cols-2">
-            {places.map((place: any) => {
+            {places.map((place: Place) => {
               const img = photoUrl(place.photoName);
 
               return (
@@ -215,7 +213,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
               );
             })}
           </div>
-        ) : null}
+        )}
       </div>
     </main>
   );
