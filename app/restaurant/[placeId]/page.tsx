@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 export default function RestaurantPage({
   params,
@@ -14,6 +15,11 @@ export default function RestaurantPage({
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
 
+  const searchParams = useSearchParams();
+  const source = searchParams.get("source");
+  const distance = searchParams.get("distance");
+  const isNearby = source === "nearby";
+
   useEffect(() => {
     loadData();
   }, []);
@@ -24,17 +30,26 @@ export default function RestaurantPage({
     try {
       const placeRes = await fetch(`/api/place?placeId=${placeId}`);
       const placeData = await placeRes.json();
+
       setPlace(placeData);
 
       const reportRes = await fetch("/api/report", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: placeData.displayName?.text || "",
-          address: placeData.formattedAddress || "",
-          rating: placeData.rating || 0,
-          userRatingCount: placeData.userRatingCount || 0,
+          name: placeData.displayName?.text || placeData.name || "未知店家",
+          address: placeData.formattedAddress || "地址資料不足",
+          rating: placeData.rating ?? null,
+          userRatingCount: placeData.userRatingCount ?? 0,
           reviews: placeData.reviews || [],
+          openNow: placeData.currentOpeningHours?.openNow ?? null,
+          types: placeData.types || [],
+          googleMapsUri: placeData.googleMapsUri || "",
+          fallbackContext: `
+這是一筆 Google 地圖 POI 或 Nearby 搜尋店家資料。
+即使公開評論文字不足，也請根據店名、地址、Google 星等、評論數、營業狀態、店家類型，產生「基礎避雷報告」。
+不要整份回覆資料不足；若缺少評論，請明確標示「評論文字不足，以下為基礎風險推估」。
+`,
         }),
       });
 
@@ -77,6 +92,92 @@ export default function RestaurantPage({
         </p>
       );
     });
+  }
+
+  function renderMenuBudget(text: string) {
+    if (!text) {
+      return <p className="text-stone-500">資料不足，暫無明確內容。</p>;
+    }
+
+    return (
+      <div className="space-y-4">
+        {text
+          .split("\n")
+          .filter(Boolean)
+          .map((line, i) => {
+            const item = line.trim();
+
+            if (
+              item.includes("NT$") ||
+              item.includes("¥") ||
+              item.includes("₩") ||
+              item.includes("฿") ||
+              item.includes("HK$") ||
+              item.includes("S$") ||
+              item.includes("台幣換算")
+            ) {
+              return (
+                <div
+                  key={i}
+                  className="rounded-2xl border border-stone-200 bg-white/70 px-4 py-3 font-black text-stone-900"
+                >
+                  {item}
+                </div>
+              );
+            }
+
+            if (
+              item.includes("中價位") ||
+              item.includes("平價") ||
+              item.includes("偏高") ||
+              item.includes("高單價") ||
+              item.includes("奢華")
+            ) {
+              return (
+                <div
+                  key={i}
+                  className="inline-flex rounded-full bg-orange-100 px-4 py-2 font-black text-orange-700"
+                >
+                  💸 {item}
+                </div>
+              );
+            }
+
+            if (item.includes("推薦品項")) {
+              return (
+                <div key={i} className="mt-2 font-black text-stone-900">
+                  ⭐ 推薦品項
+                </div>
+              );
+            }
+
+            if (item.startsWith("-")) {
+              return (
+                <div
+                  key={i}
+                  className="rounded-xl bg-stone-50 px-4 py-2 text-stone-700"
+                >
+                  {item.replace("-", "").trim()}
+                </div>
+              );
+            }
+
+            if (item.includes("價格註記") || item.includes("AI")) {
+              return null;
+            }
+
+            return (
+              <p key={i} className="leading-7 text-stone-700">
+                {item}
+              </p>
+            );
+          })}
+
+        <div className="border-t border-stone-200 pt-4 text-xs leading-6 text-stone-500">
+          🤖 價格、品項與匯率為 AI 根據公開資訊推估，實際仍以店家現場菜單與即時匯率為準。
+        </div>
+      </div>
+    );
   }
 
   function getFirstLine(text: string) {
@@ -167,10 +268,10 @@ export default function RestaurantPage({
   const maxRisk = getSection("🚨 最大風險");
   const expectationGap = getSection("🚨 期待落差指數");
   const risks = getSection("⚡ 雷點整理");
-  const badFor = getSection("❌ 容易踩雷的人");
   const worthTrip = getSection("🚗 值不值得專程前往");
   const verdict = getSection("🍅 軍師最終判決");
   const oneTruth = getSection("🎯 一句真話");
+  const menuBudget = getSection("🍜 菜單與預算推估");
 
   const isOpen = place.currentOpeningHours?.openNow;
   const reviews = place.reviews || [];
@@ -206,6 +307,20 @@ ${window.location.href}`;
         <Link href="/" className="font-black text-orange-600">
           ← 回首頁
         </Link>
+
+        {isNearby && (
+          <div className="mb-5 rounded-[26px] border border-green-200 bg-green-50 p-5 shadow-sm">
+            <div className="text-lg font-black text-green-700">
+              📍 來自附近避雷
+            </div>
+
+            <p className="mt-2 font-bold leading-7 text-stone-700">
+              你目前距離這間店約{" "}
+              <span className="text-green-700">{distance}m</span>
+              ，BeLei 已根據附近搜尋為你產生避雷報告。
+            </p>
+          </div>
+        )}
 
         <section className="relative mt-5 overflow-visible rounded-[30px] border-2 border-stone-800 bg-[#fffdf5] p-8 shadow-[8px_8px_0_#ead8b5]">
           <Tape position="left" />
@@ -345,25 +460,27 @@ ${window.location.href}`;
                   {renderContent(worthTrip)}
                 </StickyNote>
 
-                <StickyNote color="yellow" title="⚠️ 容易踩雷">
-                  {renderContent(badFor)}
+                <StickyNote color="yellow" title="🍜 菜單與預算推估">
+                  {renderMenuBudget(menuBudget)}
                 </StickyNote>
               </div>
             </PaperCard>
 
             <div className="grid gap-5 md:grid-cols-3">
               <PaperCard small>
-                <h3 className="text-2xl font-black">🚨 最大風險</h3>
-                <div className="mt-4">{renderContent(maxRisk)}</div>
-              </PaperCard>
-
-              <PaperCard small>
                 <h3 className="text-2xl font-black">⭐ 期待落差指數</h3>
+
                 <div className="mt-4 inline-flex rounded-full bg-yellow-100 px-4 py-2 text-xl font-black text-orange-700">
                   {getFirstLine(expectationGap) || "資料不足"}
                 </div>
+
                 <div className="mt-4">
                   {renderContent(getRestLines(expectationGap))}
+                </div>
+
+                <div className="mt-8 border-t border-stone-200 pt-5">
+                  <h4 className="text-xl font-black">🚨 最大風險</h4>
+                  <div className="mt-3">{renderContent(maxRisk)}</div>
                 </div>
               </PaperCard>
 
@@ -421,28 +538,21 @@ ${window.location.href}`;
                   </div>
                 </div>
               </PaperCard>
+
+              <PaperCard small color="orange">
+                <h3 className="text-2xl font-black text-orange-700">
+                  ⚡ 雷點整理
+                </h3>
+
+                <div className="mt-4">{renderContent(risks)}</div>
+              </PaperCard>
             </div>
 
-            <PaperCard>
-              <div className="grid gap-8 md:grid-cols-2">
-                <div>
-                  <h3 className="text-2xl font-black">⚡ 雷點整理</h3>
-                  <ul className="mt-5 list-disc pl-6">{renderContent(risks)}</ul>
-                </div>
-
-                <div className="md:border-l-2 md:border-stone-200 md:pl-8">
-                  <h3 className="text-2xl font-black">ℹ️ 資料來源</h3>
-                  <p className="mt-5 leading-8">
-                    Google Places、公開評論資料、BeLei 分析模型整理。
-                    外送平台資料之後接入公開頁面資訊。
-                  </p>
-                  <p className="mt-4 leading-8 text-stone-600">
-                    Google Places 僅提供部分公開評論，不等於完整一年評論資料；
-                    BeLei 會優先參考目前可取得的近期評論與品質穩定度。
-                  </p>
-                </div>
-              </div>
-            </PaperCard>
+            <div className="rounded-[22px] border border-stone-200 bg-white/60 px-5 py-4 text-xs leading-6 text-stone-400">
+              ℹ️ 資料來源：Google Places、公開評論資料、BeLei 分析模型整理。
+              Google Places 僅提供部分公開評論，不等於完整一年評論資料；BeLei
+              會優先參考目前可取得的近期評論與品質穩定度。外送平台資料後續將接入公開頁面資訊。
+            </div>
 
             <PaperCard>
               <h3 className="text-2xl font-black">

@@ -277,6 +277,30 @@ export default function Home() {
               </div>
             )}
           </div>
+
+          <div className="mx-auto mt-5 grid w-full max-w-3xl grid-cols-1 gap-3 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => router.push("/nearby")}
+              className="rounded-[22px] border border-white/25 bg-white/15 px-5 py-4 text-left backdrop-blur transition hover:bg-white/25"
+            >
+              <div className="text-lg font-black">📍 附近避雷</div>
+              <div className="mt-1 text-sm font-bold text-white/75">
+                打開定位，查看附近餐廳風險
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => router.push("/travel")}
+              className="rounded-[22px] border border-orange-300/40 bg-orange-500/20 px-5 py-4 text-left backdrop-blur transition hover:bg-orange-500/30"
+            >
+              <div className="text-lg font-black">🌍 旅人避雷</div>
+              <div className="mt-1 text-sm font-bold text-white/75">
+                出國看不懂評價，也能查中文報告
+              </div>
+            </button>
+          </div>
         </div>
       </section>
 
@@ -490,8 +514,8 @@ function HomeCard({
                   <img src={photoUrl} alt={store.name} className="h-full w-full object-cover" />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-4xl">
-  餐
-</div>
+                    餐
+                  </div>
                 )}
               </div>
 
