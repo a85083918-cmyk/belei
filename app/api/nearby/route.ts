@@ -33,7 +33,6 @@ const BLOCK_TYPES = [
   "hardware_store",
   "pet_store",
   "liquor_store",
-
   "city_hall",
   "courthouse",
   "local_government_office",
@@ -41,30 +40,25 @@ const BLOCK_TYPES = [
   "fire_station",
   "post_office",
   "embassy",
-
   "bank",
   "atm",
   "insurance_agency",
   "accounting",
-
   "hospital",
   "doctor",
   "dentist",
   "pharmacy",
   "physiotherapist",
   "veterinary_care",
-
   "school",
   "primary_school",
   "secondary_school",
   "university",
   "library",
-
   "office",
   "real_estate_agency",
   "travel_agency",
   "employment_agency",
-
   "gas_station",
   "parking",
   "bus_station",
@@ -73,11 +67,9 @@ const BLOCK_TYPES = [
   "airport",
   "taxi_stand",
   "transit_station",
-
   "lodging",
   "rv_park",
   "campground",
-
   "museum",
   "movie_theater",
   "tourist_attraction",
@@ -88,12 +80,10 @@ const BLOCK_TYPES = [
   "park",
   "zoo",
   "aquarium",
-
   "church",
   "hindu_temple",
   "mosque",
   "synagogue",
-
   "beauty_salon",
   "spa",
   "gym",
@@ -145,7 +135,6 @@ const BLOCK_KEYWORDS = [
   "美甲",
   "按摩",
   "洗衣",
-  "診所",
 ];
 
 function getDistanceMeters(
@@ -181,11 +170,32 @@ function isFoodPlace(place: any) {
   return hasAllowedType && !hasBlockedType && !hasBlockedKeyword;
 }
 
+function formatPlace(place: any, lat: number, lng: number) {
+  const placeLat = place.location?.latitude;
+  const placeLng = place.location?.longitude;
+
+  return {
+    placeId: place.id,
+    name: place.displayName?.text || "未命名餐廳",
+    address: place.formattedAddress || "",
+    rating: place.rating || null,
+    userRatingCount: place.userRatingCount || 0,
+    openNow: place.currentOpeningHours?.openNow ?? null,
+    latitude: placeLat ?? null,
+    longitude: placeLng ?? null,
+    distance:
+      placeLat && placeLng ? getDistanceMeters(lat, lng, placeLat, placeLng) : null,
+    photoName: place.photos?.[0]?.name || null,
+    types: place.types || [],
+  };
+}
+
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams;
   const lat = Number(searchParams.get("lat"));
   const lng = Number(searchParams.get("lng"));
   const category = searchParams.get("category") || "all";
+  const keyword = searchParams.get("keyword") || "";
 
   if (!lat || !lng) {
     return NextResponse.json({ error: "Missing lat or lng" }, { status: 400 });
@@ -205,7 +215,42 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const res = await fetch("https://places.googleapis.com/v1/places:searchNearby", {
+  const endpoint = keyword
+    ? "https://places.googleapis.com/v1/places:searchText"
+    : "https://places.googleapis.com/v1/places:searchNearby";
+
+  const body = keyword
+    ? {
+        textQuery: `${keyword} 餐廳`,
+        maxResultCount: 20,
+        locationBias: {
+          circle: {
+            center: {
+              latitude: lat,
+              longitude: lng,
+            },
+            radius: 3000,
+          },
+        },
+        languageCode: "zh-TW",
+      }
+    : {
+        includedTypes,
+        maxResultCount: 20,
+        rankPreference: "DISTANCE",
+        locationRestriction: {
+          circle: {
+            center: {
+              latitude: lat,
+              longitude: lng,
+            },
+            radius: 3000,
+          },
+        },
+        languageCode: "zh-TW",
+      };
+
+  const res = await fetch(endpoint, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -213,21 +258,7 @@ export async function GET(req: NextRequest) {
       "X-Goog-FieldMask":
         "places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.currentOpeningHours,places.types,places.photos",
     },
-    body: JSON.stringify({
-      includedTypes,
-      maxResultCount: 20,
-      rankPreference: "DISTANCE",
-      locationRestriction: {
-        circle: {
-          center: {
-            latitude: lat,
-            longitude: lng,
-          },
-          radius: 800,
-        },
-      },
-      languageCode: "zh-TW",
-    }),
+    body: JSON.stringify(body),
     cache: "no-store",
   });
 
@@ -245,30 +276,12 @@ export async function GET(req: NextRequest) {
 
   const places = (data.places || [])
     .filter(isFoodPlace)
-    .map((place: any) => {
-      const placeLat = place.location?.latitude;
-      const placeLng = place.location?.longitude;
-
-      return {
-        placeId: place.id,
-        name: place.displayName?.text || "未命名餐廳",
-        address: place.formattedAddress || "",
-        rating: place.rating || null,
-        userRatingCount: place.userRatingCount || 0,
-        openNow: place.currentOpeningHours?.openNow ?? null,
-        latitude: placeLat ?? null,
-        longitude: placeLng ?? null,
-        distance:
-          placeLat && placeLng
-            ? getDistanceMeters(lat, lng, placeLat, placeLng)
-            : null,
-        photoName: place.photos?.[0]?.name || null,
-        types: place.types || [],
-      };
-    });
+    .map((place: any) => formatPlace(place, lat, lng))
+    .sort((a: any, b: any) => (a.distance ?? 999999) - (b.distance ?? 999999));
 
   return NextResponse.json({
     category,
+    keyword,
     places,
   });
 }

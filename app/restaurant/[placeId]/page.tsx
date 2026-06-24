@@ -232,10 +232,10 @@ export default function RestaurantPage({
   }
 
   function getRiskLevel(score: number) {
-    if (score >= 75) return "高風險";
-    if (score >= 50) return "中高風險";
-    if (score >= 35) return "中度風險";
-    return "低風險";
+    if (score >= 80) return "非常穩定";
+    if (score >= 60) return "相對穩定";
+    if (score >= 40) return "建議觀察";
+    return "高風險";
   }
 
   function getDeliveryRisk(score: number) {
@@ -277,7 +277,8 @@ export default function RestaurantPage({
   const reviews = place.reviews || [];
   const confidence = getConfidenceLevel(place.userRatingCount || 0);
   const riskScore = getRiskScore();
-  const riskLevel = getRiskLevel(riskScore);
+  const safetyScore = 100 - riskScore;
+  const riskLevel = getRiskLevel(safetyScore);
   const deliveryRisk = getDeliveryRisk(riskScore);
   const verdictText = getVerdictBadge(getFirstLine(verdict));
 
@@ -285,7 +286,7 @@ export default function RestaurantPage({
     const shareText = `🍅 BeLei 避雷軍師報告
 店家：${place.displayName?.text || "未知店家"}
 
-🌶️ 避雷指數：${riskScore}/100
+🛡️ 安心分數：${safetyScore}/100
 🙂 軍師判決：${verdictText}
 💥 外送風險：${deliveryRisk.emoji} ${deliveryRisk.title}（AI推估）
 
@@ -372,7 +373,7 @@ ${window.location.href}`;
           <PaperCard className="mt-8 text-center">
             <div className="mx-auto h-14 w-14 animate-spin rounded-full border-4 border-orange-200 border-t-orange-500" />
             <h2 className="mt-6 text-3xl font-black text-orange-600">
-              AI 軍師分析中...
+              AI 軍師分析中...正在搜尋各大平台資料交叉比對
             </h2>
             <p className="mt-4 font-bold text-stone-600">
               正在整理公開評論、近期雷點與期待落差。
@@ -396,10 +397,10 @@ ${window.location.href}`;
             <PaperCard medal>
               <div className="grid gap-8 md:grid-cols-3">
                 <div className="md:border-r-2 md:border-stone-200 md:pr-8">
-                  <h2 className="text-2xl font-black">BeLei 避雷指數</h2>
+                  <h2 className="text-2xl font-black">BeLei 安心分數</h2>
                   <div className="mt-5 flex items-end gap-2">
-                    <span className="number-font text-7xl font-black text-orange-500">
-                      {riskScore}
+                  <span className="number-font text-7xl font-black text-orange-500">
+  {safetyScore}
                     </span>
                     <span className="mb-3 text-2xl font-black">/100</span>
                   </div>
@@ -411,7 +412,7 @@ ${window.location.href}`;
                   <div className="mt-5 h-4 overflow-hidden rounded-full bg-stone-200">
                     <div
                       className="h-full rounded-full bg-orange-400"
-                      style={{ width: `${riskScore}%` }}
+                      style={{ width: `${safetyScore}%` }}
                     />
                   </div>
                 </div>

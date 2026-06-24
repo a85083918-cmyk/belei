@@ -8,6 +8,8 @@ const NearbyMap = dynamic(() => import("../components/NearbyMap"), {
   ssr: false,
 });
 
+const ITEMS_PER_PAGE = 10;
+
 type LocationState = {
   latitude: number;
   longitude: number;
@@ -28,13 +30,182 @@ type NearbyPlace = {
 
 type FilterMode = "open" | "closed" | "all";
 type SortMode = "distance" | "rating" | "reviews" | "risk";
-type CategoryMode =
-  | "all"
-  | "restaurant"
-  | "cafe"
-  | "dessert"
-  | "bar"
-  | "takeaway";
+type CategoryMode = "all" | "restaurant" | "cafe" | "dessert" | "bar" | "takeaway";
+
+type SubCategory = {
+  id: string;
+  label: string;
+  apiCategory: CategoryMode;
+  keyword?: string;
+};
+
+type MainCategory = {
+  id: string;
+  label: string;
+  apiCategory: CategoryMode;
+  children: SubCategory[];
+};
+
+const CATEGORY_GROUPS: MainCategory[] = [
+  {
+    id: "all",
+    label: "🍽 全部",
+    apiCategory: "all",
+    children: [{ id: "all", label: "全部店家", apiCategory: "all" }],
+  },
+  {
+    id: "bbq",
+    label: "🍖 燒烤",
+    apiCategory: "restaurant",
+    children: [
+      { id: "bbq_all", label: "全部燒烤", apiCategory: "restaurant", keyword: "燒烤" },
+      { id: "yakiniku", label: "燒肉", apiCategory: "restaurant", keyword: "燒肉" },
+      { id: "korean_bbq", label: "韓式烤肉", apiCategory: "restaurant", keyword: "韓式烤肉" },
+      { id: "yakitori", label: "串燒", apiCategory: "restaurant", keyword: "串燒" },
+      { id: "izakaya", label: "居酒屋", apiCategory: "restaurant", keyword: "居酒屋" },
+      { id: "charcoal", label: "炭烤 / BBQ", apiCategory: "restaurant", keyword: "炭烤 BBQ" },
+    ],
+  },
+  {
+    id: "hotpot",
+    label: "🍲 火鍋",
+    apiCategory: "restaurant",
+    children: [
+      { id: "hotpot_all", label: "全部火鍋", apiCategory: "restaurant", keyword: "火鍋" },
+      { id: "personal_hotpot", label: "個人鍋", apiCategory: "restaurant", keyword: "個人鍋" },
+      { id: "spicy_hotpot", label: "麻辣鍋", apiCategory: "restaurant", keyword: "麻辣鍋" },
+      { id: "buffet_hotpot", label: "火鍋吃到飽", apiCategory: "restaurant", keyword: "火鍋吃到飽" },
+      { id: "stone_hotpot", label: "石頭火鍋", apiCategory: "restaurant", keyword: "石頭火鍋" },
+      { id: "shabu", label: "涮涮鍋", apiCategory: "restaurant", keyword: "涮涮鍋" },
+    ],
+  },
+  {
+    id: "japanese",
+    label: "🍣 日式",
+    apiCategory: "restaurant",
+    children: [
+      { id: "japanese_all", label: "全部日式", apiCategory: "restaurant", keyword: "日式料理" },
+      { id: "sushi", label: "壽司", apiCategory: "restaurant", keyword: "壽司" },
+      { id: "ramen", label: "拉麵", apiCategory: "restaurant", keyword: "拉麵" },
+      { id: "donburi", label: "丼飯", apiCategory: "restaurant", keyword: "丼飯" },
+      { id: "teishoku", label: "定食", apiCategory: "restaurant", keyword: "定食" },
+      { id: "japanese_buffet", label: "日料吃到飽", apiCategory: "restaurant", keyword: "日料吃到飽" },
+    ],
+  },
+  {
+    id: "chinese",
+    label: "🍜 中式",
+    apiCategory: "restaurant",
+    children: [
+      { id: "chinese_all", label: "全部中式", apiCategory: "restaurant", keyword: "中式料理" },
+      { id: "taiwanese", label: "台菜", apiCategory: "restaurant", keyword: "台菜" },
+      { id: "stir_fry", label: "熱炒", apiCategory: "restaurant", keyword: "熱炒" },
+      { id: "sichuan", label: "川菜", apiCategory: "restaurant", keyword: "川菜" },
+      { id: "hongkong", label: "港式", apiCategory: "restaurant", keyword: "港式" },
+      { id: "noodles", label: "麵食", apiCategory: "restaurant", keyword: "麵食" },
+      { id: "snack", label: "小吃", apiCategory: "restaurant", keyword: "小吃" },
+    ],
+  },
+  {
+    id: "steak",
+    label: "🥩 牛排",
+    apiCategory: "restaurant",
+    children: [
+      { id: "steak_all", label: "全部牛排", apiCategory: "restaurant", keyword: "牛排" },
+      { id: "budget_steak", label: "平價牛排", apiCategory: "restaurant", keyword: "平價牛排" },
+      { id: "steakhouse", label: "牛排館", apiCategory: "restaurant", keyword: "牛排館" },
+      { id: "teppanyaki", label: "鐵板燒", apiCategory: "restaurant", keyword: "鐵板燒" },
+      { id: "premium_steak", label: "高級排餐", apiCategory: "restaurant", keyword: "高級牛排" },
+    ],
+  },
+  {
+    id: "italian",
+    label: "🍝 義式",
+    apiCategory: "restaurant",
+    children: [
+      { id: "italian_all", label: "全部義式", apiCategory: "restaurant", keyword: "義式料理" },
+      { id: "pasta", label: "義大利麵", apiCategory: "restaurant", keyword: "義大利麵" },
+      { id: "risotto", label: "燉飯", apiCategory: "restaurant", keyword: "燉飯" },
+      { id: "pizza", label: "披薩", apiCategory: "restaurant", keyword: "披薩" },
+      { id: "bistro", label: "義式餐酒館", apiCategory: "restaurant", keyword: "義式餐酒館" },
+    ],
+  },
+  {
+    id: "international",
+    label: "🌮 異國料理",
+    apiCategory: "restaurant",
+    children: [
+      { id: "international_all", label: "全部異國料理", apiCategory: "restaurant", keyword: "異國料理" },
+      { id: "korean", label: "韓式", apiCategory: "restaurant", keyword: "韓式料理" },
+      { id: "thai", label: "泰式", apiCategory: "restaurant", keyword: "泰式料理" },
+      { id: "vietnamese", label: "越式", apiCategory: "restaurant", keyword: "越式料理" },
+      { id: "indian", label: "印度", apiCategory: "restaurant", keyword: "印度料理" },
+      { id: "mexican", label: "墨西哥", apiCategory: "restaurant", keyword: "墨西哥料理" },
+      { id: "malaysia", label: "馬來西亞 / 新加坡", apiCategory: "restaurant", keyword: "馬來西亞 新加坡料理" },
+    ],
+  },
+  {
+    id: "cafe",
+    label: "☕ 咖啡廳",
+    apiCategory: "cafe",
+    children: [
+      { id: "cafe_all", label: "全部咖啡廳", apiCategory: "cafe", keyword: "咖啡廳" },
+      { id: "specialty_coffee", label: "精品咖啡", apiCategory: "cafe", keyword: "精品咖啡" },
+      { id: "hand_drip", label: "手沖咖啡", apiCategory: "cafe", keyword: "手沖咖啡" },
+      { id: "chain_cafe", label: "連鎖咖啡", apiCategory: "cafe", keyword: "連鎖咖啡" },
+      { id: "aesthetic_cafe", label: "網美咖啡廳", apiCategory: "cafe", keyword: "網美咖啡廳" },
+    ],
+  },
+  {
+    id: "dessert",
+    label: "🍰 甜點",
+    apiCategory: "dessert",
+    children: [
+      { id: "dessert_all", label: "全部甜點", apiCategory: "dessert", keyword: "甜點" },
+      { id: "cake", label: "蛋糕", apiCategory: "dessert", keyword: "蛋糕" },
+      { id: "ice", label: "冰品", apiCategory: "dessert", keyword: "冰品" },
+      { id: "tofu_pudding", label: "豆花", apiCategory: "dessert", keyword: "豆花" },
+      { id: "pancake", label: "鬆餅", apiCategory: "dessert", keyword: "鬆餅" },
+      { id: "sweet_soup", label: "甜湯", apiCategory: "dessert", keyword: "甜湯" },
+    ],
+  },
+  {
+    id: "bar",
+    label: "🍺 酒吧",
+    apiCategory: "bar",
+    children: [
+      { id: "bar_all", label: "全部酒吧", apiCategory: "bar", keyword: "酒吧" },
+      { id: "cocktail", label: "調酒吧", apiCategory: "bar", keyword: "調酒吧" },
+      { id: "beer", label: "精釀啤酒", apiCategory: "bar", keyword: "精釀啤酒" },
+      { id: "wine_bar", label: "餐酒館", apiCategory: "bar", keyword: "餐酒館" },
+      { id: "sports_bar", label: "運動酒吧", apiCategory: "bar", keyword: "運動酒吧" },
+    ],
+  },
+  {
+    id: "american",
+    label: "🍔 美式",
+    apiCategory: "restaurant",
+    children: [
+      { id: "american_all", label: "全部美式", apiCategory: "restaurant", keyword: "美式餐廳" },
+      { id: "burger", label: "漢堡", apiCategory: "restaurant", keyword: "漢堡" },
+      { id: "fried_chicken", label: "炸雞", apiCategory: "restaurant", keyword: "炸雞" },
+      { id: "fast_food", label: "速食", apiCategory: "restaurant", keyword: "速食" },
+      { id: "american_restaurant", label: "美式餐廳", apiCategory: "restaurant", keyword: "美式餐廳" },
+    ],
+  },
+  {
+    id: "brunch",
+    label: "🥪 早午餐",
+    apiCategory: "restaurant",
+    children: [
+      { id: "brunch_all", label: "全部早午餐", apiCategory: "restaurant", keyword: "早午餐" },
+      { id: "breakfast", label: "早餐店", apiCategory: "restaurant", keyword: "早餐店" },
+      { id: "brunch_shop", label: "Brunch", apiCategory: "restaurant", keyword: "Brunch" },
+      { id: "sandwich", label: "三明治", apiCategory: "restaurant", keyword: "三明治" },
+      { id: "light_meal", label: "輕食", apiCategory: "restaurant", keyword: "輕食" },
+    ],
+  },
+];
 
 function getPhotoUrl(photoName?: string | null) {
   if (!photoName) return null;
@@ -76,15 +247,22 @@ export default function NearbyPage() {
 
   const [location, setLocation] = useState<LocationState | null>(null);
   const [places, setPlaces] = useState<NearbyPlace[]>([]);
-  const [filterMode, setFilterMode] = useState<FilterMode>("open");
+  const [filterMode, setFilterMode] = useState<FilterMode>("all");
   const [sortMode, setSortMode] = useState<SortMode>("distance");
   const [categoryMode, setCategoryMode] = useState<CategoryMode>("all");
-  const [viewMode, setViewMode] = useState<"list" | "map">("list");
+  const [activeMainCategoryId, setActiveMainCategoryId] = useState("all");
+  const [activeSubCategoryId, setActiveSubCategoryId] = useState("all");
+  const [activeKeyword, setActiveKeyword] = useState("");
   const [selectedMapPlace, setSelectedMapPlace] = useState<NearbyPlace | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [savedPlaceIds, setSavedPlaceIds] = useState<string[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const activeMainCategory =
+    CATEGORY_GROUPS.find((category) => category.id === activeMainCategoryId) ||
+    CATEGORY_GROUPS[0];
 
   const openPlaces = useMemo(
     () => places.filter((place) => place.openNow === true),
@@ -122,6 +300,31 @@ export default function NearbyPage() {
     return list;
   }, [filterMode, sortMode, places, openPlaces, closedPlaces]);
 
+  const totalPages = Math.max(1, Math.ceil(filteredPlaces.length / ITEMS_PER_PAGE));
+
+  const pagedPlaces = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredPlaces.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredPlaces, currentPage]);
+
+  function buildNearbyUrl(
+    currentLocation: LocationState,
+    nextCategoryMode: CategoryMode,
+    keyword = ""
+  ) {
+    const params = new URLSearchParams({
+      lat: String(currentLocation.latitude),
+      lng: String(currentLocation.longitude),
+      category: nextCategoryMode,
+    });
+
+    if (keyword.trim()) {
+      params.set("keyword", keyword.trim());
+    }
+
+    return `/api/nearby?${params.toString()}`;
+  }
+
   function getCurrentLocation() {
     setErrorMessage("");
     setIsLoading(true);
@@ -141,7 +344,7 @@ export default function NearbyPage() {
 
         setLocation(nextLocation);
         setIsLoading(false);
-        await searchNearbyRestaurants(nextLocation);
+        await searchNearbyRestaurants(nextLocation, categoryMode, activeKeyword);
       },
       (error) => {
         setIsLoading(false);
@@ -171,16 +374,19 @@ export default function NearbyPage() {
     );
   }
 
-  async function searchNearbyRestaurants(currentLocation: LocationState) {
+  async function searchNearbyRestaurants(
+    currentLocation: LocationState,
+    nextCategoryMode: CategoryMode = categoryMode,
+    keyword = activeKeyword
+  ) {
     try {
       setIsSearching(true);
       setErrorMessage("");
       setSelectedMapPlace(null);
 
-      const res = await fetch(
-        `/api/nearby?lat=${currentLocation.latitude}&lng=${currentLocation.longitude}&category=${categoryMode}`,
-        { cache: "no-store" }
-      );
+      const res = await fetch(buildNearbyUrl(currentLocation, nextCategoryMode, keyword), {
+        cache: "no-store",
+      });
 
       const data = await res.json();
 
@@ -189,15 +395,57 @@ export default function NearbyPage() {
       }
 
       setPlaces(data.places || []);
+      setCurrentPage(1);
       setFilterMode("all");
       setSortMode("distance");
-      setViewMode("list");
     } catch (error) {
       console.error(error);
       setErrorMessage("附近餐廳搜尋失敗，請確認 Google Places API 設定是否正常。");
     } finally {
       setIsSearching(false);
     }
+  }
+
+  async function handleMainCategoryClick(category: MainCategory) {
+    const firstChild = category.children[0];
+    const nextKeyword = firstChild.keyword || "";
+
+    setActiveMainCategoryId(category.id);
+    setActiveSubCategoryId(firstChild.id);
+    setCategoryMode(firstChild.apiCategory);
+    setActiveKeyword(nextKeyword);
+    setSelectedMapPlace(null);
+    setCurrentPage(1);
+
+    if (location) {
+      await searchNearbyRestaurants(location, firstChild.apiCategory, nextKeyword);
+    }
+  }
+
+  async function handleSubCategoryClick(child: SubCategory) {
+    const nextKeyword = child.keyword || "";
+
+    setActiveSubCategoryId(child.id);
+    setCategoryMode(child.apiCategory);
+    setActiveKeyword(nextKeyword);
+    setSelectedMapPlace(null);
+    setCurrentPage(1);
+
+    if (location) {
+      await searchNearbyRestaurants(location, child.apiCategory, nextKeyword);
+    }
+  }
+
+  function handleFilterChange(nextFilter: FilterMode) {
+    setFilterMode(nextFilter);
+    setSelectedMapPlace(null);
+    setCurrentPage(1);
+  }
+
+  function handleSortChange(nextSort: SortMode) {
+    setSortMode(nextSort);
+    setSelectedMapPlace(null);
+    setCurrentPage(1);
   }
 
   function openGoogleMaps(place: NearbyPlace) {
@@ -308,7 +556,7 @@ ${window.location.origin}/restaurant/${place.placeId}?source=nearby&distance=${p
 
             {location ? (
               <p className="mt-2 text-sm font-bold leading-6 text-stone-500">
-                已取得定位，正在以你目前位置搜尋 800 公尺內的餐飲店家。
+                已取得定位，正在以你目前位置搜尋 3 公里內的店家。
               </p>
             ) : (
               <p className="mt-2 text-sm font-bold leading-6 text-stone-500">
@@ -318,14 +566,11 @@ ${window.location.origin}/restaurant/${place.placeId}?source=nearby&distance=${p
           </div>
 
           {places.length > 0 && (
-            <div className="mt-5 space-y-4">
+            <div className="mt-5 space-y-5">
               <div className="grid grid-cols-3 rounded-[18px] bg-stone-100 p-1 text-xs font-black md:max-w-xl md:text-sm">
                 <button
                   type="button"
-                  onClick={() => {
-                    setFilterMode("open");
-                    setSelectedMapPlace(null);
-                  }}
+                  onClick={() => handleFilterChange("open")}
                   className={`rounded-[14px] px-3 py-3 transition ${
                     filterMode === "open"
                       ? "bg-green-600 text-white shadow-sm"
@@ -337,10 +582,7 @@ ${window.location.origin}/restaurant/${place.placeId}?source=nearby&distance=${p
 
                 <button
                   type="button"
-                  onClick={() => {
-                    setFilterMode("closed");
-                    setSelectedMapPlace(null);
-                  }}
+                  onClick={() => handleFilterChange("closed")}
                   className={`rounded-[14px] px-3 py-3 transition ${
                     filterMode === "closed"
                       ? "bg-stone-800 text-white shadow-sm"
@@ -352,10 +594,7 @@ ${window.location.origin}/restaurant/${place.placeId}?source=nearby&distance=${p
 
                 <button
                   type="button"
-                  onClick={() => {
-                    setFilterMode("all");
-                    setSelectedMapPlace(null);
-                  }}
+                  onClick={() => handleFilterChange("all")}
                   className={`rounded-[14px] px-3 py-3 transition ${
                     filterMode === "all"
                       ? "bg-orange-500 text-white shadow-sm"
@@ -365,108 +604,63 @@ ${window.location.origin}/restaurant/${place.placeId}?source=nearby&distance=${p
                   🍽 全部 ({places.length})
                 </button>
               </div>
-              <div className="flex flex-wrap gap-2">
-  <CategoryButton
-    active={categoryMode === "all"}
-    onClick={() => {
-      setCategoryMode("all");
-      location && searchNearbyRestaurants(location);
-    }}
-  >
-    🍽 全部
-  </CategoryButton>
 
-  <CategoryButton
-    active={categoryMode === "restaurant"}
-    onClick={() => {
-      setCategoryMode("restaurant");
-      location && searchNearbyRestaurants(location);
-    }}
-  >
-    🍜 餐廳
-  </CategoryButton>
+              <div className="rounded-[24px] border border-orange-100 bg-orange-50 p-4">
+                <div className="mb-3 text-sm font-black text-orange-700">
+                  先選想吃的類型
+                </div>
 
-  <CategoryButton
-    active={categoryMode === "cafe"}
-    onClick={() => {
-      setCategoryMode("cafe");
-      location && searchNearbyRestaurants(location);
-    }}
-  >
-    ☕ 咖啡
-  </CategoryButton>
+                <div className="flex flex-wrap gap-2">
+                  {CATEGORY_GROUPS.map((category) => (
+                    <CategoryButton
+                      key={category.id}
+                      active={activeMainCategoryId === category.id}
+                      onClick={() => handleMainCategoryClick(category)}
+                    >
+                      {category.label}
+                    </CategoryButton>
+                  ))}
+                </div>
 
-  <CategoryButton
-    active={categoryMode === "dessert"}
-    onClick={() => {
-      setCategoryMode("dessert");
-      location && searchNearbyRestaurants(location);
-    }}
-  >
-    🍰 甜點
-  </CategoryButton>
+                <div className="mt-4 border-t border-orange-200 pt-4">
+                  <div className="mb-3 text-sm font-black text-stone-600">
+                    再細選：{activeMainCategory.label}
+                  </div>
 
-  <CategoryButton
-    active={categoryMode === "bar"}
-    onClick={() => {
-      setCategoryMode("bar");
-      location && searchNearbyRestaurants(location);
-    }}
-  >
-    🍺 酒吧
-  </CategoryButton>
+                  <div className="flex flex-wrap gap-2">
+                    {activeMainCategory.children.map((child) => (
+                      <SubCategoryButton
+                        key={child.id}
+                        active={activeSubCategoryId === child.id}
+                        onClick={() => handleSubCategoryClick(child)}
+                      >
+                        {child.label}
+                      </SubCategoryButton>
+                    ))}
+                  </div>
 
-  <CategoryButton
-    active={categoryMode === "takeaway"}
-    onClick={() => {
-      setCategoryMode("takeaway");
-      location && searchNearbyRestaurants(location);
-    }}
-  >
-    🍱 外帶
-  </CategoryButton>
-</div>
-
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => setViewMode("list")}
-                  className={`rounded-full px-5 py-2 text-sm font-black transition ${
-                    viewMode === "list"
-                      ? "bg-stone-900 text-white"
-                      : "bg-stone-100 text-stone-600 hover:bg-stone-200"
-                  }`}
-                >
-                  📋 清單模式
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setViewMode("map")}
-                  className={`rounded-full px-5 py-2 text-sm font-black transition ${
-                    viewMode === "map"
-                      ? "bg-orange-500 text-white"
-                      : "bg-stone-100 text-stone-600 hover:bg-stone-200"
-                  }`}
-                >
-                  🗺 地圖模式
-                </button>
+                  {activeKeyword && (
+                    <p className="mt-3 text-xs font-bold leading-5 text-stone-500">
+                      目前搜尋關鍵字：{activeKeyword}
+                    </p>
+                  )}
+                </div>
               </div>
 
               <div className="flex flex-wrap gap-2">
-                <SortButton active={sortMode === "distance"} onClick={() => setSortMode("distance")}>
+                <SortButton active={sortMode === "distance"} onClick={() => handleSortChange("distance")}>
                   📍 最近距離
                 </SortButton>
 
-                <SortButton active={sortMode === "rating"} onClick={() => setSortMode("rating")}>
+                <SortButton active={sortMode === "rating"} onClick={() => handleSortChange("rating")}>
                   ⭐ 最高評分
                 </SortButton>
 
-                <SortButton active={sortMode === "reviews"} onClick={() => setSortMode("reviews")}>
+                <SortButton active={sortMode === "reviews"} onClick={() => handleSortChange("reviews")}>
                   🔥 討論度
                 </SortButton>
 
-                <SortButton active={sortMode === "risk"} onClick={() => setSortMode("risk")}>
+                <SortButton active={sortMode === "risk"} onClick={() => handleSortChange("risk")}>
                   💥 BeLei風險
                 </SortButton>
               </div>
@@ -487,167 +681,171 @@ ${window.location.origin}/restaurant/${place.placeId}?source=nearby&distance=${p
             </div>
           )}
 
-          {!isSearching &&
-            location &&
-            filteredPlaces.length > 0 &&
-            viewMode === "map" && (
-              <div className="mt-6 space-y-4">
+          {!isSearching && location && filteredPlaces.length > 0 && (
+            <div className="mt-6 space-y-5">
+              <div>
+                <h3 className="mb-3 text-xl font-black">🗺 地圖位置</h3>
+
                 <div className="overflow-hidden rounded-[28px] border border-stone-200">
-                <NearbyMap
-  center={{
-    lat: location.latitude,
-    lng: location.longitude,
-  }}
-  places={filteredPlaces}
-  onSelectPlace={(place) => {
-    setSelectedMapPlace(place);
-  }}
-  onSearchArea={async (nextCenter) => {
-    try {
-      setIsSearching(true);
-      setSelectedMapPlace(null);
+                  <NearbyMap
+                    center={{ lat: location.latitude, lng: location.longitude }}
+                    places={filteredPlaces}
+                    onSelectPlace={(place) => setSelectedMapPlace(place)}
+                    onSearchArea={async (nextCenter) => {
+                      const nextLocation = {
+                        latitude: nextCenter.lat,
+                        longitude: nextCenter.lng,
+                      };
 
-      const res = await fetch(
-        `/api/nearby?lat=${nextCenter.lat}&lng=${nextCenter.lng}&category=${categoryMode}`,
-        {
-          cache: "no-store",
-        }
-      );
+                      setLocation(nextLocation);
+                      await searchNearbyRestaurants(nextLocation, categoryMode, activeKeyword);
+                    }}
+                  />
+                </div>
+              </div>
 
-      const data = await res.json();
+              {selectedMapPlace && (
+                <MapPlaceCard
+                  place={selectedMapPlace}
+                  onClose={() => setSelectedMapPlace(null)}
+                  onReport={() => goReport(selectedMapPlace)}
+                  onNavigate={() => openGoogleMaps(selectedMapPlace)}
+                  onShare={() => sharePlace(selectedMapPlace)}
+                />
+              )}
 
-      if (!res.ok) {
-        throw new Error(
-          data.error || "搜尋此區域失敗"
-        );
-      }
-
-      setPlaces(data.places || []);
-
-      setLocation({
-        latitude: nextCenter.lat,
-        longitude: nextCenter.lng,
-      });
-
-      setFilterMode("all");
-    } catch (error) {
-      console.error(error);
-      alert("搜尋此區域失敗");
-    } finally {
-      setIsSearching(false);
-    }
-  }}
-/>
+              <div>
+                <div className="mb-3 flex items-end justify-between gap-3">
+                  <div>
+                    <h3 className="text-xl font-black">📋 店家清單</h3>
+                    <p className="mt-1 text-sm font-bold text-stone-500">
+                      共 {filteredPlaces.length} 間，第 {currentPage} / {totalPages} 頁
+                    </p>
+                  </div>
                 </div>
 
-                {selectedMapPlace && (
-                  <MapPlaceCard
-                    place={selectedMapPlace}
-                    onClose={() => setSelectedMapPlace(null)}
-                    onReport={() => goReport(selectedMapPlace)}
-                    onNavigate={() => openGoogleMaps(selectedMapPlace)}
-                    onShare={() => sharePlace(selectedMapPlace)}
-                  />
-                )}
-              </div>
-            )}
+                <div className="grid gap-4 md:grid-cols-2">
+                  {pagedPlaces.map((place) => {
+                    const photoUrl = getPhotoUrl(place.photoName);
+                    const isSaved = savedPlaceIds.includes(place.placeId);
 
-          {!isSearching &&
-            filteredPlaces.length > 0 &&
-            viewMode === "list" && (
-              <div className="mt-6 grid gap-4 md:grid-cols-2">
-                {filteredPlaces.map((place) => {
-                  const photoUrl = getPhotoUrl(place.photoName);
-                  const walkMinutes = getWalkMinutes(place.distance);
-                  const isSaved = savedPlaceIds.includes(place.placeId);
-
-                  return (
-                    <div
-                      key={place.placeId}
-                      className="overflow-hidden rounded-[26px] border border-stone-200 bg-stone-50 text-left transition hover:-translate-y-1 hover:bg-orange-50 hover:shadow-md"
-                    >
-                      <div className="h-40 w-full bg-stone-200">
-                        {photoUrl ? (
-                          <img
-                            src={photoUrl}
-                            alt={place.name}
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-full items-center justify-center text-4xl">
-                            餐
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="p-5">
-                        <div className="flex items-start justify-between gap-3">
-                          <h3 className="text-xl font-black text-stone-900">
-                            {place.name}
-                          </h3>
-
-                          {place.openNow !== null && (
-                            <span
-                              className={`shrink-0 rounded-full px-3 py-1 text-xs font-black ${
-                                place.openNow
-                                  ? "bg-green-100 text-green-700"
-                                  : "bg-stone-200 text-stone-600"
-                              }`}
-                            >
-                              {place.openNow ? "營業中" : "已休息"}
-                            </span>
+                    return (
+                      <div
+                        key={place.placeId}
+                        className="overflow-hidden rounded-[26px] border border-stone-200 bg-stone-50 text-left transition hover:-translate-y-1 hover:bg-orange-50 hover:shadow-md"
+                      >
+                        <div className="h-40 w-full bg-stone-200">
+                          {photoUrl ? (
+                            <img
+                              src={photoUrl}
+                              alt={place.name}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-full items-center justify-center text-4xl">
+                              餐
+                            </div>
                           )}
                         </div>
 
-                        <p className="mt-2 line-clamp-2 text-sm font-bold leading-6 text-stone-500">
-                          {place.address || "尚無地址資料"}
-                        </p>
+                        <div className="p-5">
+                          <div className="flex items-start justify-between gap-3">
+                            <h3 className="text-xl font-black text-stone-900">
+                              {place.name}
+                            </h3>
 
-                        <PlaceMeta place={place} />
+                            {place.openNow !== null && (
+                              <span
+                                className={`shrink-0 rounded-full px-3 py-1 text-xs font-black ${
+                                  place.openNow
+                                    ? "bg-green-100 text-green-700"
+                                    : "bg-stone-200 text-stone-600"
+                                }`}
+                              >
+                                {place.openNow ? "營業中" : "已休息"}
+                              </span>
+                            )}
+                          </div>
 
-                        <div className="mt-5 grid grid-cols-2 gap-3">
-                          <button
-                            type="button"
-                            onClick={() => goReport(place)}
-                            className="rounded-2xl bg-stone-900 px-4 py-3 text-center text-sm font-black text-white transition hover:bg-stone-800"
-                          >
-                            💥 AI避雷報告
-                          </button>
+                          <p className="mt-2 line-clamp-2 text-sm font-bold leading-6 text-stone-500">
+                            {place.address || "尚無地址資料"}
+                          </p>
 
-                          <button
-                            type="button"
-                            onClick={() => openGoogleMaps(place)}
-                            className="rounded-2xl border border-stone-300 bg-white px-4 py-3 text-center text-sm font-black text-stone-700 transition hover:bg-stone-100"
-                          >
-                            🗺 導航
-                          </button>
+                          <PlaceMeta place={place} />
 
-                          <button
-                            type="button"
-                            onClick={() => toggleSave(place.placeId)}
-                            className={`rounded-2xl border px-4 py-3 text-center text-sm font-black transition ${
-                              isSaved
-                                ? "border-red-200 bg-red-50 text-red-600"
-                                : "border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
-                            }`}
-                          >
-                            {isSaved ? "❤️ 已收藏" : "🤍 收藏"}
-                          </button>
+                          <div className="mt-5 grid grid-cols-2 gap-3">
+                            <button
+                              type="button"
+                              onClick={() => goReport(place)}
+                              className="rounded-2xl bg-stone-900 px-4 py-3 text-center text-sm font-black text-white transition hover:bg-stone-800"
+                            >
+                              💥 AI避雷報告
+                            </button>
 
-                          <button
-                            type="button"
-                            onClick={() => sharePlace(place)}
-                            className="rounded-2xl border border-stone-300 bg-white px-4 py-3 text-center text-sm font-black text-stone-700 transition hover:bg-stone-100"
-                          >
-                            📤 分享
-                          </button>
+                            <button
+                              type="button"
+                              onClick={() => openGoogleMaps(place)}
+                              className="rounded-2xl border border-stone-300 bg-white px-4 py-3 text-center text-sm font-black text-stone-700 transition hover:bg-stone-100"
+                            >
+                              🗺 導航
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => toggleSave(place.placeId)}
+                              className={`rounded-2xl border px-4 py-3 text-center text-sm font-black transition ${
+                                isSaved
+                                  ? "border-red-200 bg-red-50 text-red-600"
+                                  : "border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
+                              }`}
+                            >
+                              {isSaved ? "❤️ 已收藏" : "🤍 收藏"}
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => sharePlace(place)}
+                              className="rounded-2xl border border-stone-300 bg-white px-4 py-3 text-center text-sm font-black text-stone-700 transition hover:bg-stone-100"
+                            >
+                              📤 分享
+                            </button>
+                          </div>
                         </div>
                       </div>
+                    );
+                  })}
+                </div>
+
+                {totalPages > 1 && (
+                  <div className="mt-6 flex items-center justify-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                      disabled={currentPage === 1}
+                      className="rounded-full bg-stone-100 px-5 py-3 text-sm font-black text-stone-600 transition hover:bg-stone-200 disabled:opacity-40"
+                    >
+                      ← 上一頁
+                    </button>
+
+                    <div className="rounded-full bg-orange-100 px-5 py-3 text-sm font-black text-orange-700">
+                      第 {currentPage} / {totalPages} 頁
                     </div>
-                  );
-                })}
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setCurrentPage((page) => Math.min(totalPages, page + 1))
+                      }
+                      disabled={currentPage === totalPages}
+                      className="rounded-full bg-stone-100 px-5 py-3 text-sm font-black text-stone-600 transition hover:bg-stone-200 disabled:opacity-40"
+                    >
+                      下一頁 →
+                    </button>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
+          )}
 
           {!isSearching &&
             location &&
@@ -782,47 +980,71 @@ function MapPlaceCard({
 }
 
 function SortButton({
-    active,
-    onClick,
-    children,
-  }: {
-    active: boolean;
-    onClick: () => void;
-    children: React.ReactNode;
-  }) {
-    return (
-      <button
-        type="button"
-        onClick={onClick}
-        className={`rounded-full px-4 py-2 text-sm font-black transition ${
-          active ? "bg-orange-500 text-white" : "bg-stone-100 text-stone-600"
-        }`}
-      >
-        {children}
-      </button>
-    );
-  }
-  
-  function CategoryButton({
-    active,
-    onClick,
-    children,
-  }: {
-    active: boolean;
-    onClick: () => void;
-    children: React.ReactNode;
-  }) {
-    return (
-      <button
-        type="button"
-        onClick={onClick}
-        className={`rounded-full px-4 py-2 text-sm font-black transition ${
-          active
-            ? "bg-stone-900 text-white"
-            : "bg-stone-100 text-stone-600 hover:bg-stone-200"
-        }`}
-      >
-        {children}
-      </button>
-    );
-  }
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-full px-4 py-2 text-sm font-black transition ${
+        active ? "bg-orange-500 text-white" : "bg-stone-100 text-stone-600"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function CategoryButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-full px-4 py-2 text-sm font-black transition ${
+        active
+          ? "bg-stone-900 text-white"
+          : "bg-white text-stone-700 hover:bg-stone-100"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function SubCategoryButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-full border px-4 py-2 text-sm font-black transition ${
+        active
+          ? "border-orange-500 bg-orange-500 text-white"
+          : "border-orange-200 bg-white text-stone-600 hover:bg-orange-100"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
