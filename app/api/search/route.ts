@@ -2,7 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 
 const API_KEY = process.env.GOOGLE_PLACES_API_KEY;
 
-const CITY_WORDS = ["台北", "臺北", "新北", "桃園", "台中", "臺中", "台南", "臺南", "高雄"];
+const CITY_WORDS = [
+  "台北",
+  "臺北",
+  "新北",
+  "桃園",
+  "台中",
+  "臺中",
+  "台南",
+  "臺南",
+  "高雄",
+];
+
+const CITY_SEARCH_ORDER = ["高雄", "台南", "台中", "台北", "新北", "桃園"];
 
 const FOOD_TYPES = [
   "restaurant",
@@ -19,7 +31,6 @@ const BLOCK_TYPES = [
   "gas_station",
   "local_government_office",
   "city_hall",
-  "store",
   "shopping_mall",
   "supermarket",
   "convenience_store",
@@ -33,7 +44,6 @@ const BLOCK_TYPES = [
   "lodging",
   "locality",
   "political",
-  "point_of_interest",
 ];
 
 function normalizeText(text = "") {
@@ -44,8 +54,8 @@ function getCityFromQuery(q: string): string | null {
   const query = normalizeText(q);
 
   if (query.includes("高雄")) return "高雄";
-  if (query.includes("台中")) return "台中";
   if (query.includes("台南")) return "台南";
+  if (query.includes("台中")) return "台中";
   if (query.includes("台北")) return "台北";
   if (query.includes("新北")) return "新北";
   if (query.includes("桃園")) return "桃園";
@@ -123,13 +133,10 @@ function withPhotoName(place: any) {
   };
 }
 
-async function searchGooglePlaces(query: string, city: string | null) {
+async function searchGooglePlacesOnce(searchQuery: string) {
   if (!API_KEY) {
     throw new Error("Missing GOOGLE_PLACES_API_KEY");
   }
-
-  const cleanQuery = removeCityWords(query);
-  const searchQuery = city ? `${city} ${cleanQuery} 餐廳` : `${cleanQuery} 餐廳`;
 
   const res = await fetch("https://places.googleapis.com/v1/places:searchText", {
     method: "POST",
@@ -152,9 +159,9 @@ async function searchGooglePlaces(query: string, city: string | null) {
       textQuery: searchQuery,
       languageCode: "zh-TW",
       regionCode: "TW",
-      includedType: "restaurant",
-      maxResultCount: 12,
+      maxResultCount: 20,
     }),
+    cache: "no-store",
   });
 
   const data = await res.json();
@@ -164,6 +171,27 @@ async function searchGooglePlaces(query: string, city: string | null) {
   }
 
   return data.places || [];
+}
+
+async function searchGooglePlaces(query: string, city: string | null) {
+  const cleanQuery = removeCityWords(query);
+
+  if (city) {
+    return searchGooglePlacesOnce(`${city} ${cleanQuery} 餐廳`);
+  }
+
+  const searches = [
+    searchGooglePlacesOnce(`${cleanQuery} 餐廳`),
+    ...CITY_SEARCH_ORDER.map((cityName) =>
+      searchGooglePlacesOnce(`${cityName} ${cleanQuery} 餐廳`)
+    ),
+  ];
+
+  const results = await Promise.allSettled(searches);
+
+  return results.flatMap((result) =>
+    result.status === "fulfilled" ? result.value : []
+  );
 }
 
 export async function GET(req: NextRequest) {
@@ -194,7 +222,9 @@ export async function GET(req: NextRequest) {
     const finalPlaces = relevantPlaces.map(withPhotoName);
 
     const noCityMatch =
-      Boolean(requestedCity) && foodPlaces.length > 0 && cityFilteredPlaces.length === 0;
+      Boolean(requestedCity) &&
+      foodPlaces.length > 0 &&
+      cityFilteredPlaces.length === 0;
 
     return NextResponse.json({
       places: finalPlaces,
@@ -214,7 +244,7 @@ export async function GET(req: NextRequest) {
         foodCount: foodPlaces.length,
         cityFilteredCount: cityFilteredPlaces.length,
         finalCount: finalPlaces.length,
-        rawPreview: dedupedPlaces.slice(0, 5).map((place) => ({
+        rawPreview: dedupedPlaces.slice(0, 8).map((place) => ({
           name: place.displayName?.text,
           address: place.formattedAddress,
           types: place.types,
