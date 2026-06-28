@@ -82,10 +82,10 @@ export default function RestaurantPage({
       setReport(nextReport);
 
       const keywordMatch = nextReport.match(/推薦搜尋關鍵字[:：]\s*([^\n]+)/);
-const keyword =
-  keywordMatch?.[1]?.trim() ||
-  placeData.displayName?.text?.split(" ")[0] ||
-  "餐廳";
+      const keyword =
+        keywordMatch?.[1]?.trim() ||
+        placeData.displayName?.text?.split(" ")[0] ||
+        "餐廳";
 
       if (
         keyword &&
@@ -100,9 +100,7 @@ const keyword =
         );
 
         const alternativesData = await alternativesRes.json();
-        console.log("alternatives keyword:", keyword);
-console.log("alternatives data:", alternativesData);
-setAlternatives(alternativesData.alternatives || []);
+        setAlternatives(alternativesData.alternatives || []);
       }
     } catch (err) {
       console.error(err);
@@ -282,27 +280,17 @@ ${window.location.href}`;
             </div>
 
             {safetyScore < 60 && alternatives.length > 0 && (
-  <AlternativesCard
-    alternatives={alternatives}
-    onOpenReport={(nextPlace) =>
-      router.push(
-        `/restaurant/${nextPlace.placeId}?source=nearby&distance=${
-          nextPlace.distance ?? 0
-        }`
-      )
-    }
-  />
-)}
-            <AlternativesCard
-  alternatives={alternatives}
-  onOpenReport={(nextPlace) =>
-    router.push(
-      `/restaurant/${nextPlace.placeId}?source=nearby&distance=${
-        nextPlace.distance ?? 0
-      }`
-    )
-  }
-/>
+              <AlternativesCard
+                alternatives={alternatives}
+                onOpenReport={(nextPlace) =>
+                  router.push(
+                    `/restaurant/${nextPlace.placeId}?source=nearby&distance=${
+                      nextPlace.distance ?? 0
+                    }`
+                  )
+                }
+              />
+            )}
 
             <SourceCard />
 
