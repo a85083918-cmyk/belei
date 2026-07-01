@@ -1,70 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const ALLOWED_TYPES = [
-  "restaurant",
-  "cafe",
-  "bakery",
-  "bar",
-  "meal_takeaway",
-  "meal_delivery",
-];
-
-const BLOCK_TYPES = [
-  "shopping_mall",
-  "department_store",
-  "supermarket",
-  "convenience_store",
-  "store",
-  "electronics_store",
-  "gas_station",
-  "parking",
-  "bank",
-  "atm",
-  "hospital",
-  "doctor",
-  "dentist",
-  "pharmacy",
-  "school",
-  "university",
-  "library",
-  "lodging",
-  "tourist_attraction",
-  "movie_theater",
-  "museum",
-  "park",
-  "gym",
-  "beauty_salon",
-  "spa",
-  "car_repair",
-  "car_wash",
-];
-
-const BLOCK_KEYWORDS = [
-  "百貨",
-  "購物中心",
-  "商場",
-  "停車場",
-  "市政府",
-  "區公所",
-  "銀行",
-  "郵局",
-  "加油站",
-  "醫院",
-  "診所",
-  "牙醫",
-  "藥局",
-  "學校",
-  "大學",
-  "圖書館",
-  "車站",
-  "捷運站",
-  "旅館",
-  "飯店",
-  "健身房",
-  "美容",
-  "洗衣",
-];
-
 function getDistanceMeters(
   lat1: number,
   lng1: number,
@@ -83,19 +18,6 @@ function getDistanceMeters(
       Math.sin(dLng / 2);
 
   return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
-}
-
-function isFoodPlace(place: any) {
-  const types: string[] = place.types || [];
-  const name = place.displayName?.text || "";
-
-  const hasAllowedType = types.some((type) => ALLOWED_TYPES.includes(type));
-  const hasBlockedType = types.some((type) => BLOCK_TYPES.includes(type));
-  const hasBlockedKeyword = BLOCK_KEYWORDS.some((keyword) =>
-    name.includes(keyword)
-  );
-
-  return hasAllowedType && !hasBlockedType && !hasBlockedKeyword;
 }
 
 function getRiskScoreV2(place: any) {
@@ -120,13 +42,8 @@ function getRiskScoreV2(place: any) {
   else if (count >= 30) score += 8;
   else score += 16;
 
-  if (openNow === false) {
-    score += 5;
-  }
-
-  if (rating >= 4.7 && count < 100) {
-    score += 12;
-  }
+  if (openNow === false) score += 5;
+  if (rating >= 4.7 && count < 100) score += 12;
 
   return Math.max(0, Math.min(Math.round(score), 100));
 }
@@ -135,10 +52,9 @@ function getSafetyScore(place: any) {
   return 100 - getRiskScoreV2(place);
 }
 
-function formatPlace(place: any, lat: number, lng: number) {
+function formatPlace(place: any, userLat?: number, userLng?: number) {
   const placeLat = place.location?.latitude;
   const placeLng = place.location?.longitude;
-  const safetyScore = getSafetyScore(place);
 
   return {
     placeId: place.id,
@@ -150,29 +66,23 @@ function formatPlace(place: any, lat: number, lng: number) {
     latitude: placeLat ?? null,
     longitude: placeLng ?? null,
     distance:
-      placeLat && placeLng
-        ? getDistanceMeters(lat, lng, placeLat, placeLng)
+      userLat && userLng && placeLat && placeLng
+        ? getDistanceMeters(userLat, userLng, placeLat, placeLng)
         : null,
     photoName: place.photos?.[0]?.name || null,
-    types: place.types || [],
-    safetyScore,
+    safetyScore: getSafetyScore(place),
   };
 }
 
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams;
 
+  const q = searchParams.get("q") || "";
   const lat = Number(searchParams.get("lat"));
   const lng = Number(searchParams.get("lng"));
-  const keyword = searchParams.get("keyword") || "";
-  const currentPlaceId = searchParams.get("currentPlaceId") || "";
 
-  if (!lat || !lng) {
-    return NextResponse.json({ error: "Missing lat or lng" }, { status: 400 });
-  }
-
-  if (!keyword.trim()) {
-    return NextResponse.json({ error: "Missing keyword" }, { status: 400 });
+  if (!q.trim()) {
+    return NextResponse.json({ error: "Missing query" }, { status: 400 });
   }
 
   const apiKey =
@@ -187,6 +97,54 @@ export async function GET(req: NextRequest) {
     );
   }
 
+  const origin = req.nextUrl.origin;
+
+  const intentRes = await fetch(`${origin}/api/intent`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ query: q }),
+    cache: "no-store",
+  });
+
+  if (!intentRes.ok) {
+    const text = await intentRes.text();
+    console.error("Intent API failed:", text);
+
+    return NextResponse.json(
+      { error: "Intent API failed", detail: text },
+      { status: 500 }
+    );
+  }
+
+  const intent = await intentRes.json();
+
+  const keyword = intent.keyword || q;
+  const city = intent.city || searchParams.get("city") || "高雄";
+  const reason = intent.reason || "";
+
+  const searchQuery = `${city} ${keyword}`;
+
+  const body: any = {
+    textQuery: searchQuery,
+    maxResultCount: 20,
+    languageCode: "zh-TW",
+    regionCode: "TW",
+  };
+
+  if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
+    body.locationBias = {
+      circle: {
+        center: {
+          latitude: lat,
+          longitude: lng,
+        },
+        radius: 8000,
+      },
+    };
+  }
+
   const res = await fetch("https://places.googleapis.com/v1/places:searchText", {
     method: "POST",
     headers: {
@@ -195,39 +153,24 @@ export async function GET(req: NextRequest) {
       "X-Goog-FieldMask":
         "places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.currentOpeningHours,places.types,places.photos",
     },
-    body: JSON.stringify({
-      textQuery: `${keyword} 餐廳`,
-      maxResultCount: 20,
-      locationBias: {
-        circle: {
-          center: {
-            latitude: lat,
-            longitude: lng,
-          },
-          radius: 5000,
-        },
-      },
-      languageCode: "zh-TW",
-    }),
+    body: JSON.stringify(body),
     cache: "no-store",
   });
 
   if (!res.ok) {
     const text = await res.text();
-    console.error("Alternatives Search failed:", text);
+    console.error("Intent search failed:", text);
 
     return NextResponse.json(
-      { error: "Alternatives Search failed", detail: text },
+      { error: "Intent search failed", detail: text },
       { status: 500 }
     );
   }
 
   const data = await res.json();
 
-  const alternatives = (data.places || [])
-    .filter(isFoodPlace)
-    .filter((place: any) => place.id !== currentPlaceId)
-    .map((place: any) => formatPlace(place, lat, lng))
+  const results = (data.places || [])
+    .map((place: any) => formatPlace(place, lat || undefined, lng || undefined))
     .filter((place: any) => place.safetyScore >= 60)
     .sort((a: any, b: any) => {
       if (b.safetyScore !== a.safetyScore) {
@@ -236,11 +179,17 @@ export async function GET(req: NextRequest) {
 
       return (a.distance ?? 999999) - (b.distance ?? 999999);
     })
-    .slice(0, 6);
+    .slice(0, 10);
 
   return NextResponse.json({
-    keyword,
-    currentPlaceId,
-    alternatives,
+    q,
+    intent: {
+      keyword,
+      city,
+      reason,
+    },
+    searchQuery,
+    count: results.length,
+    results,
   });
 }

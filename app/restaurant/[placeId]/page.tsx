@@ -87,6 +87,9 @@ export default function RestaurantPage({
         placeData.displayName?.text?.split(" ")[0] ||
         "餐廳";
 
+      const currentRiskScore = getRiskScore(placeData);
+      const currentSafetyScore = 100 - currentRiskScore;
+
       if (
         keyword &&
         placeData.location?.latitude &&
@@ -95,7 +98,9 @@ export default function RestaurantPage({
         const alternativesRes = await fetch(
           `/api/alternatives?lat=${placeData.location.latitude}&lng=${
             placeData.location.longitude
-          }&keyword=${encodeURIComponent(keyword)}&currentPlaceId=${placeId}`,
+          }&keyword=${encodeURIComponent(
+            keyword
+          )}&currentPlaceId=${placeId}&currentSafetyScore=${currentSafetyScore}`,
           { cache: "no-store" }
         );
 
@@ -279,9 +284,10 @@ ${window.location.href}`;
               <RiskCard risks={risks} renderContent={renderContent} />
             </div>
 
-            {safetyScore < 60 && alternatives.length > 0 && (
+            {alternatives.length > 0 && (
               <AlternativesCard
                 alternatives={alternatives}
+                safetyScore={safetyScore}
                 onOpenReport={(nextPlace) =>
                   router.push(
                     `/restaurant/${nextPlace.placeId}?source=nearby&distance=${

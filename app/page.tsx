@@ -3,63 +3,25 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
-type StoreItem = {
-  name: string;
-  query: string;
-  subtitle: string;
-  photoName?: string | null;
-};
+import FixedImageRankCard from "./components/home/FixedImageRankCard";
+import HeroSearch from "./components/home/HeroSearch";
+import HomeCard from "./components/home/HomeCard";
+import MobileHotList from "./components/home/MobileHotList";
 
-type ApiStoreItem = {
-  name: string;
-  query: string;
-  subtitle?: string;
-  area?: string;
-  reason?: string;
-  risk?: string;
-  strength?: string;
-  photoName?: string | null;
-};
+import {
+  expectationGap,
+  hotSearches,
+  stableStores,
+  type StoreItem,
+} from "./components/home/homeData";
 
-const hotSearches: StoreItem[] = [
-  { name: "老新台菜", query: "老新台菜 高雄", subtitle: "被搜尋 6,215 次" },
-  { name: "丹丹漢堡", query: "丹丹漢堡 高雄", subtitle: "被搜尋 4,992 次" },
-  { name: "紅茶老爹", query: "紅茶老爹", subtitle: "被搜尋 4,201 次" },
-  { name: "50嵐", query: "50嵐", subtitle: "被搜尋 3,890 次" },
-  { name: "老四川", query: "老四川", subtitle: "被搜尋 3,210 次" },
-];
+import {
+  isIntentSearch,
+  normalizeSearchKeyword,
+  normalizeStores,
+} from "./components/home/homeUtils";
 
-const expectationGap: StoreItem[] = [
-  { name: "老四川", query: "老四川", subtitle: "期待落差指數 92" },
-  { name: "陶板屋", query: "陶板屋", subtitle: "期待落差指數 89" },
-  { name: "王品牛排", query: "王品牛排", subtitle: "期待落差指數 87" },
-];
-
-const stableStores: StoreItem[] = [
-  { name: "饗食天堂", query: "饗食天堂", subtitle: "穩定度 88%" },
-  { name: "漢來海港", query: "漢來海港", subtitle: "穩定度 85%" },
-  { name: "燒肉眾", query: "燒肉眾", subtitle: "穩定度 82%" },
-];
-
-function normalizeStores(items?: ApiStoreItem[]): StoreItem[] {
-  if (!items || !Array.isArray(items)) return [];
-
-  return items.map((item) => ({
-    name: item.name,
-    query: item.query,
-    subtitle: item.subtitle || item.area || "餐廳",
-    photoName: item.photoName ?? null,
-  }));
-}
-
-function normalizeSearchKeyword(value: string) {
-  return value.replace(/\s+/g, " ").trim();
-}
-
-function getPhotoUrl(photoName?: string | null) {
-  if (!photoName) return null;
-  return `/api/photo?name=${encodeURIComponent(photoName)}&w=600`;
-}
+type LocationStatus = "idle" | "loading" | "granted" | "denied";
 
 export default function Home() {
   const router = useRouter();
@@ -69,12 +31,33 @@ export default function Home() {
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [showRecent, setShowRecent] = useState(false);
 
+  const [currentCity, setCurrentCity] = useState("高雄");
+  const [currentLat, setCurrentLat] = useState<number | null>(null);
+  const [currentLng, setCurrentLng] = useState<number | null>(null);
+  const [locationStatus, setLocationStatus] = useState<LocationStatus>("idle");
+
   const [hotStores, setHotStores] = useState<StoreItem[]>(hotSearches);
   const [gapStores, setGapStores] = useState<StoreItem[]>(expectationGap);
-  const [stableStoreList, setStableStoreList] = useState<StoreItem[]>(stableStores);
+  const [stableStoreList, setStableStoreList] =
+    useState<StoreItem[]>(stableStores);
 
   useEffect(() => {
     loadHomeRankings();
+
+    const savedLocation = localStorage.getItem("belei-location");
+    if (savedLocation) {
+      try {
+        const parsed = JSON.parse(savedLocation);
+        if (parsed.lat && parsed.lng) {
+          setCurrentLat(parsed.lat);
+          setCurrentLng(parsed.lng);
+          setLocationStatus("granted");
+        }
+        if (parsed.city) setCurrentCity(parsed.city);
+      } catch {
+        localStorage.removeItem("belei-location");
+      }
+    }
 
     const history = localStorage.getItem("belei-recent-searches");
     if (history) {
@@ -108,57 +91,55 @@ export default function Home() {
       const gap = normalizeStores(data.expectationGap);
       const stable = normalizeStores(data.stableStores);
 
-      await loadHomePhotos(
-        hot.length ? hot : hotSearches,
-        gap.length ? gap : expectationGap,
-        stable.length ? stable : stableStores
-      );
+      setHotStores(hot.length ? hot : hotSearches);
+      setGapStores(gap.length ? gap : expectationGap);
+      setStableStoreList(stable.length ? stable : stableStores);
     } catch (error) {
       console.error("首頁排行榜載入失敗，改用預設資料", error);
-      await loadHomePhotos(hotSearches, expectationGap, stableStores);
+      setHotStores(hotSearches);
+      setGapStores(expectationGap);
+      setStableStoreList(stableStores);
     }
   }
 
-  async function loadHomePhotos(
-    hotSource: StoreItem[],
-    gapSource: StoreItem[],
-    stableSource: StoreItem[]
-  ) {
-    const [hot, gap, stable] = await Promise.all([
-      attachPhotos(hotSource),
-      attachPhotos(gapSource),
-      attachPhotos(stableSource),
-    ]);
+  function handleDetectLocation() {
+    if (!("geolocation" in navigator)) {
+      setLocationStatus("denied");
+      return;
+    }
 
-    setHotStores(hot);
-    setGapStores(gap);
-    setStableStoreList(stable);
-  }
+    setLocationStatus("loading");
 
-  async function attachPhotos(stores: StoreItem[]) {
-    return await Promise.all(
-      stores.map(async (store) => {
-        try {
-          const res = await fetch(`/api/search?q=${encodeURIComponent(store.query)}`);
-          const data = await res.json();
-          const firstPlace = data.places?.[0];
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
 
-          return {
-            ...store,
-            photoName: firstPlace?.photoName ?? null,
-          };
-        } catch (error) {
-          console.error("首頁照片載入失敗", store.name, error);
-          return store;
-        }
-      })
+        setCurrentLat(lat);
+        setCurrentLng(lng);
+        setLocationStatus("granted");
+
+        localStorage.setItem(
+          "belei-location",
+          JSON.stringify({
+            city: currentCity,
+            lat,
+            lng,
+          })
+        );
+      },
+      () => {
+        setLocationStatus("denied");
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 8000,
+        maximumAge: 1000 * 60 * 10,
+      }
     );
   }
 
-  function handleSearch(value?: string) {
-    const searchKeyword = normalizeSearchKeyword(value || keyword);
-    if (!searchKeyword) return;
-
+  function saveRecentSearch(searchKeyword: string) {
     const history = JSON.parse(
       localStorage.getItem("belei-recent-searches") || "[]"
     ) as string[];
@@ -171,6 +152,31 @@ export default function Home() {
     localStorage.setItem("belei-recent-searches", JSON.stringify(nextHistory));
     setRecentSearches(nextHistory);
     setShowRecent(false);
+  }
+
+  function getIntentSearchUrl(searchKeyword: string) {
+    const params = new URLSearchParams();
+    params.set("q", searchKeyword);
+    params.set("city", currentCity);
+
+    if (currentLat && currentLng) {
+      params.set("lat", String(currentLat));
+      params.set("lng", String(currentLng));
+    }
+
+    return `/intent-search?${params.toString()}`;
+  }
+
+  function handleSearch(value?: string) {
+    const searchKeyword = normalizeSearchKeyword(value || keyword);
+    if (!searchKeyword) return;
+
+    saveRecentSearch(searchKeyword);
+
+    if (isIntentSearch(searchKeyword)) {
+      router.push(getIntentSearchUrl(searchKeyword));
+      return;
+    }
 
     router.push(`/search?q=${encodeURIComponent(searchKeyword)}`);
   }
@@ -190,7 +196,7 @@ export default function Home() {
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/45 to-[#fff8e8]" />
 
-        <div className="relative mx-auto flex min-h-[360px] max-w-5xl flex-col px-4 pb-10 pt-6 text-white md:min-h-[520px]">
+        <div className="relative mx-auto flex min-h-[360px] max-w-5xl flex-col px-4 pb-10 pt-6 text-white md:min-h-[560px]">
           <div className="flex items-center justify-between">
             <h1 className="text-3xl font-black tracking-tight md:text-6xl">
               Be<span className="text-orange-500">Lei</span>
@@ -200,83 +206,35 @@ export default function Home() {
 
           <div className="mt-10 text-center md:mt-20">
             <div className="mx-auto w-fit rounded-full bg-white/15 px-5 py-2 text-sm font-black text-orange-200 backdrop-blur">
-              吃之前，先查查
+              吃飯前先避雷
             </div>
 
             <h2 className="mt-4 text-5xl font-black leading-tight md:text-7xl">
-              吃之前，
+              今天想吃
               <br />
-              先<span className="text-orange-400">查查</span>
+              <span className="text-orange-400">什麼？</span>
             </h2>
 
             <p className="mt-3 text-base font-bold leading-7 text-white/90 md:text-2xl">
-              Google 告訴你有多紅
+              可以直接查餐廳
               <br />
-              我們告訴你會不會後悔
+              也可以像問 AI 一樣描述需求
             </p>
           </div>
 
-          <div
-            ref={recentRef}
-            className="relative mx-auto mt-6 w-full max-w-3xl rounded-[24px] border border-white/30 bg-white p-2 shadow-[0_18px_45px_rgba(0,0,0,0.25)]"
-          >
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={keyword}
-                onFocus={() => setShowRecent(true)}
-                onChange={(e) => setKeyword(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleSearch();
-                  if (e.key === "Escape") setShowRecent(false);
-                }}
-                placeholder="輸入餐廳名稱，例如：老新台菜"
-                className="min-w-0 flex-1 rounded-2xl bg-stone-50 px-4 py-4 text-sm font-bold text-stone-800 outline-none focus:bg-orange-50 md:text-lg"
-              />
-
-              <button
-                onClick={() => handleSearch()}
-                className="shrink-0 rounded-2xl bg-orange-500 px-5 py-4 text-base font-black text-white hover:bg-orange-600 md:px-8 md:text-lg"
-              >
-                搜尋
-              </button>
-            </div>
-
-            {showRecent && recentSearches.length > 0 && (
-              <div className="absolute left-0 right-0 top-full z-30 mt-3 overflow-hidden rounded-[24px] border border-stone-100 bg-white text-left shadow-[6px_6px_0_#ead8b5]">
-                <div className="flex items-center justify-between px-5 py-4">
-                  <div className="text-sm font-black text-stone-500">🕒 最近搜尋</div>
-
-                  <button
-                    type="button"
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      clearRecentSearches();
-                    }}
-                    className="text-xs font-black text-orange-500 hover:text-orange-600"
-                  >
-                    清除
-                  </button>
-                </div>
-
-                <div className="pb-2">
-                  {recentSearches.map((item) => (
-                    <button
-                      key={item}
-                      type="button"
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        handleSearch(item);
-                      }}
-                      className="flex w-full items-center px-5 py-3 font-bold text-stone-700 transition hover:bg-orange-50"
-                    >
-                      {item}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
+          <HeroSearch
+            keyword={keyword}
+            setKeyword={setKeyword}
+            recentSearches={recentSearches}
+            showRecent={showRecent}
+            setShowRecent={setShowRecent}
+            handleSearch={handleSearch}
+            clearRecentSearches={clearRecentSearches}
+            recentRef={recentRef}
+            currentCity={currentCity}
+            locationStatus={locationStatus}
+            onDetectLocation={handleDetectLocation}
+          />
 
           <div className="mx-auto mt-5 grid w-full max-w-3xl grid-cols-1 gap-3 sm:grid-cols-2">
             <button
@@ -357,178 +315,5 @@ export default function Home() {
         </section>
       </section>
     </main>
-  );
-}
-
-function FixedImageRankCard({
-  label,
-  name,
-  subtitle,
-  score,
-  meta,
-  imageSrc,
-  tone,
-  query,
-  onSearch,
-}: {
-  label: string;
-  name: string;
-  subtitle: string;
-  score: string;
-  meta: string;
-  imageSrc: string;
-  tone: "red" | "green";
-  query: string;
-  onSearch: (value: string) => void;
-}) {
-  const toneClass =
-    tone === "red"
-      ? {
-          card: "bg-red-50 border-red-100",
-          pill: "bg-red-100 text-red-600",
-          score: "text-red-600",
-          button: "border-red-400 text-red-600",
-        }
-      : {
-          card: "bg-green-50 border-green-100",
-          pill: "bg-green-100 text-green-700",
-          score: "text-green-700",
-          button: "border-green-500 text-green-700",
-        };
-
-  return (
-    <button
-      onClick={() => onSearch(query)}
-      className={`block w-full overflow-hidden rounded-[26px] border p-4 text-left shadow-[5px_5px_0_#ead8b5] ${toneClass.card}`}
-    >
-      <div className="flex gap-3">
-        <div className="flex flex-1 flex-col justify-between">
-          <div>
-            <div className={`w-fit rounded-2xl px-3 py-2 text-xs font-black ${toneClass.pill}`}>
-              {label}
-            </div>
-
-            <h3 className="mt-3 text-2xl font-black">{name}</h3>
-
-            <p className="mt-2 text-sm font-bold text-stone-700">
-              {subtitle}{" "}
-              <span className={`text-xl font-black ${toneClass.score}`}>{score}</span>
-            </p>
-
-            <p className="mt-1 text-xs font-bold text-stone-600">{meta}</p>
-          </div>
-
-          <div
-            className={`mt-3 w-fit rounded-2xl border bg-white px-3 py-2 text-xs font-black ${toneClass.button}`}
-          >
-            查看分析報告
-          </div>
-        </div>
-
-        <div className="h-32 w-[38%] shrink-0 overflow-hidden rounded-[22px] bg-stone-200">
-          <img src={imageSrc} alt={name} className="h-full w-full object-cover" />
-        </div>
-      </div>
-    </button>
-  );
-}
-
-function MobileHotList({
-  stores,
-  onSearch,
-}: {
-  stores: StoreItem[];
-  onSearch: (value: string) => void;
-}) {
-  return (
-    <div className="rounded-[26px] border border-stone-200 bg-white p-5 text-left shadow-[5px_5px_0_#ead8b5]">
-      <h2 className="text-2xl font-black">🔥 熱門搜尋 TOP 5</h2>
-
-      <div className="mt-5 space-y-3">
-        {stores.slice(0, 5).map((store, index) => {
-          const photoUrl = getPhotoUrl(store.photoName);
-
-          return (
-            <button
-              key={store.query}
-              onClick={() => onSearch(store.query)}
-              className="flex w-full items-center gap-3 rounded-2xl bg-stone-50 p-3 text-left transition hover:bg-orange-50"
-            >
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-500 text-sm font-black text-white">
-                {index + 1}
-              </div>
-
-              <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-stone-200">
-                {photoUrl ? (
-                  <img src={photoUrl} alt={store.name} className="h-full w-full object-cover" />
-                ) : (
-                  <div className="flex h-full items-center justify-center">🍽️</div>
-                )}
-              </div>
-
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-base font-black text-stone-900">
-                  {store.name}
-                </div>
-
-                <div className="truncate text-xs font-bold text-stone-500">
-                  {store.subtitle}
-                </div>
-              </div>
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function HomeCard({
-  title,
-  subtitle,
-  stores,
-  onSearch,
-}: {
-  title: string;
-  subtitle: string;
-  stores: StoreItem[];
-  onSearch: (value: string) => void;
-}) {
-  return (
-    <div className="rounded-[28px] border border-stone-200 bg-white p-8 text-left shadow-sm">
-      <h2 className="text-2xl font-black">{title}</h2>
-      <p className="mt-2 text-sm font-bold text-stone-500">{subtitle}</p>
-
-      <div className="mt-8 space-y-4">
-        {stores.map((store) => {
-          const photoUrl = getPhotoUrl(store.photoName);
-
-          return (
-            <button
-              key={store.query}
-              onClick={() => onSearch(store.query)}
-              className="w-full overflow-hidden rounded-2xl bg-stone-50 text-left shadow-sm transition hover:bg-orange-50"
-            >
-              <div className="h-28 w-full bg-stone-200">
-                {photoUrl ? (
-                  <img src={photoUrl} alt={store.name} className="h-full w-full object-cover" />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center text-4xl">
-                    餐
-                  </div>
-                )}
-              </div>
-
-              <div className="px-5 py-4">
-                <div className="text-xl font-black text-stone-700">{store.name}</div>
-                <div className="mt-1 text-sm font-bold text-stone-400">
-                  {store.subtitle}
-                </div>
-              </div>
-            </button>
-          );
-        })}
-      </div>
-    </div>
   );
 }
